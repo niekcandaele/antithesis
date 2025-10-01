@@ -10,7 +10,7 @@ services:
       # Prevent node_modules from being overridden
       - /app/node_modules
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
       - NODE_ENV=development
     stdin_open: true
