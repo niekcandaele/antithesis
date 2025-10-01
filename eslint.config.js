@@ -14,6 +14,12 @@ export default tseslint.config(
     },
   },
   {
+    files: ['**/*.test.ts'],
+    rules: {
+      '@typescript-eslint/no-floating-promises': 'off',
+    },
+  },
+  {
     ignores: ['dist/', 'node_modules/', 'eslint.config.js'],
   },
 );
