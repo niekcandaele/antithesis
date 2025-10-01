@@ -12,6 +12,9 @@ export default tseslint.config(
         tsconfigRootDir: import.meta.dirname,
       },
     },
+    rules: {
+      'no-console': ['error', { allow: ['debug'] }],
+    },
   },
   {
     files: ['**/*.test.ts'],

@@ -5,3 +5,4 @@ HARDCORE RULES:
 - Running the linter/formatter commands is a rare exception to the docker-env rule.
 - After code changes that affect the running app, verify the app still works by checking `docker compose logs`
 - When installing a package, or adding a docker image or ... you should always verify that the tag/version you are using is the latest unless otherwise instructed. Never use 'latest' of something
+- Whenever adding functionality, you should consider whether it makes sense to add/modify the config and allow controlling config via env vars
