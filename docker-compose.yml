@@ -41,6 +41,13 @@ services:
       - '3000:3000'
     environment:
       - NODE_ENV=development
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=antithesis
+      - DB_USER=antithesis
+      - DB_PASSWORD=antithesis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     stdin_open: true
     tty: true
     depends_on:

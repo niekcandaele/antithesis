@@ -181,7 +181,7 @@ Integrating core Takaro infrastructure components (TenantScoped, DTO, Health, Da
 
 ### Tasks
 
-- [ ] 3.1: Create Kysely database connection module
+- [x] 3.1: Create Kysely database connection module
   - **Output**: Database connection with configurable pool size
   - **Files**: `src/lib/db/index.ts` (new)
   - **Verify**: getDb() returns Kysely instance, pool connects to PostgreSQL
@@ -191,7 +191,7 @@ Integrating core Takaro infrastructure components (TenantScoped, DTO, Health, Da
     - Idle timeout: 30s, connection timeout: 10s
     - Singleton pattern for database instance
 
-- [ ] 3.2: Create migration runner with environment-aware execution
+- [x] 3.2: Create migration runner with environment-aware execution
   - **Depends on**: 3.1
   - **Output**: Migration system that auto-runs in dev, manual in prod
   - **Files**: `src/lib/db/migrations.ts` (new)
@@ -202,7 +202,7 @@ Integrating core Takaro infrastructure components (TenantScoped, DTO, Health, Da
     - Only auto-run if NODE_ENV === 'development'
     - Reads from src/db/migrations/
 
-- [ ] 3.3: Create CLI script for manual production migrations
+- [x] 3.3: Create CLI script for manual production migrations
   - **Depends on**: 3.2
   - **Output**: Standalone CLI for running migrations
   - **Files**: `src/lib/db/migrate-cli.ts` (new)
@@ -210,7 +210,7 @@ Integrating core Takaro infrastructure components (TenantScoped, DTO, Health, Da
   - **JSDoc**: Document CLI usage
   - **Details**: Imports and calls runMigrations() directly
 
-- [ ] 3.4: Create BaseModel interfaces and helpers
+- [x] 3.4: Create BaseModel interfaces and helpers
   - **Depends on**: 3.1
   - **Output**: BaseModel interface and timestamp helpers
   - **Files**: `src/lib/db/BaseModel.ts` (new)
@@ -220,7 +220,7 @@ Integrating core Takaro infrastructure components (TenantScoped, DTO, Health, Da
     - BaseModel interface: id, createdAt, updatedAt
     - withTimestamps() helper function
 
-- [ ] 3.5: Create TenantScopedModel helper
+- [x] 3.5: Create TenantScopedModel helper
   - **Depends on**: 3.4
   - **Output**: withTenantScope() helper for query filtering
   - **Files**: `src/lib/db/TenantScopedModel.ts` (new)
@@ -228,7 +228,7 @@ Integrating core Takaro infrastructure components (TenantScoped, DTO, Health, Da
   - **JSDoc**: Document withTenantScope() with usage example
   - **Details**: Applies `where('tenantId', '=', tenantId)` to query
 
-- [ ] 3.6: Implement query builder with pagination limits
+- [x] 3.6: Implement query builder with pagination limits
   - **Output**: buildQuery() function with filters, ILIKE search, pagination (default 20, max 100)
   - **Files**: `src/lib/db/queryBuilder.ts` (new)
   - **Verify**: Query builder applies filters, pagination, sorting correctly
@@ -240,7 +240,7 @@ Integrating core Takaro infrastructure components (TenantScoped, DTO, Health, Da
     - GreaterThan/LessThan comparisons
     - Sorting with direction
 
-- [ ] 3.7: Write unit tests for query builder
+- [x] 3.7: Write unit tests for query builder
   - **Depends on**: 3.6
   - **Output**: Tests for query builder logic
   - **Files**: `src/lib/db/queryBuilder.test.ts` (new)
@@ -253,7 +253,7 @@ Integrating core Takaro infrastructure components (TenantScoped, DTO, Health, Da
     - Sorting with direction
     - Edge cases: empty filters, null values, invalid sort fields
 
-- [ ] 3.8: Create example migration
+- [x] 3.8: Create example migration
   - **Depends on**: 3.2
   - **Output**: Example migration creating users table
   - **Files**: `src/db/migrations/001_create_example_table.ts` (new)
@@ -263,14 +263,14 @@ Integrating core Takaro infrastructure components (TenantScoped, DTO, Health, Da
     - Include id, createdAt, updatedAt columns
     - up() and down() functions
 
-- [ ] 3.9: Generate Kysely types from database schema
+- [x] 3.9: Generate Kysely types from database schema
   - **Depends on**: 3.8
   - **Output**: Auto-generated Kysely types
   - **Files**: `src/lib/db/types.ts` (new, generated)
   - **Verify**: `npm run db:codegen` generates types successfully
   - **Details**: Run after migration to generate types from schema
 
-- [ ] 3.10: Write integration tests for database
+- [x] 3.10: Write integration tests for database
   - **Depends on**: 3.8, 3.9
   - **Output**: Tests for database operations
   - **Files**: `src/lib/db/db.test.ts` (new)
@@ -284,14 +284,14 @@ Integrating core Takaro infrastructure components (TenantScoped, DTO, Health, Da
 
 ### Phase 3 Checkpoint
 
-- [ ] Run lint: `npm run lint`
-- [ ] Run format: `npm run format`
-- [ ] Run build: `npm run build`
-- [ ] Run tests: `npm test`
-- [ ] Run migrations: `npm run migrate`
-- [ ] Generate types: `npm run db:codegen`
-- [ ] Manual verification: Connect to database, verify tables created, query data
-- [ ] **Demo ready**: Show database connection, migrations running, query builder filtering/paginating, tenant isolation
+- [x] Run lint: `npm run lint`
+- [x] Run format: `npm run format`
+- [x] Run build: `npm run build`
+- [x] Run tests: `npm test` (62 tests passing)
+- [x] Run migrations: `npm run migrate`
+- [x] Generate types: `npm run db:codegen`
+- [x] Manual verification: Connect to database, verify tables created, query data
+- [x] **Demo ready**: Show database connection, migrations running, query builder filtering/paginating, tenant isolation
 
 ## Phase 4: Redis Layer
 
