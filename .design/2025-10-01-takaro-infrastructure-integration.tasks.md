@@ -300,7 +300,7 @@ Integrating core Takaro infrastructure components (TenantScoped, DTO, Health, Da
 
 ### Tasks
 
-- [ ] 4.1: Implement Redis class with dual client methods
+- [x] 4.1: Implement Redis class with dual client methods
   - **Output**: Redis singleton with getClient() and getTenantScopedClient()
   - **Files**: `src/lib/redis.ts` (new)
   - **Verify**: Both methods return cached clients, key prefixing works
@@ -311,7 +311,7 @@ Integrating core Takaro infrastructure components (TenantScoped, DTO, Health, Da
     - Auto-register readiness hooks for each client
     - Client caching by composite key
 
-- [ ] 4.2: Write unit tests for Redis client caching
+- [x] 4.2: Write unit tests for Redis client caching
   - **Depends on**: 4.1
   - **Output**: Tests for Redis client management
   - **Files**: `src/lib/redis.test.ts` (new)
@@ -322,7 +322,7 @@ Integrating core Takaro infrastructure components (TenantScoped, DTO, Health, Da
     - Configuration merging
     - getClient() vs getTenantScopedClient() key prefixing behavior
 
-- [ ] 4.3: Write integration tests for Redis
+- [x] 4.3: Write integration tests for Redis
   - **Depends on**: 4.1
   - **Output**: Tests for Redis operations
   - **Files**: `src/lib/redis.integration.test.ts` (new)
@@ -336,12 +336,12 @@ Integrating core Takaro infrastructure components (TenantScoped, DTO, Health, Da
 
 ### Phase 4 Checkpoint
 
-- [ ] Run lint: `npm run lint`
-- [ ] Run format: `npm run format`
-- [ ] Run build: `npm run build`
-- [ ] Run tests: `npm test`
-- [ ] Manual verification: Connect to Redis, verify key prefixes, check health hook registration
-- [ ] **Demo ready**: Show Redis connection, key namespacing (global vs tenant-scoped), health checks
+- [x] Run lint: `npm run lint`
+- [x] Run format: `npm run format`
+- [x] Run build: `npm run build`
+- [x] Run tests: `npm test` (70 tests passing, core Redis functionality verified)
+- [x] Manual verification: Connect to Redis, verify key prefixes, check health hook registration
+- [x] **Demo ready**: Show Redis connection, key namespacing (global vs tenant-scoped), health checks
 
 ## Phase 5: Integration & Application Wiring
 
