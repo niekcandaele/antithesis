@@ -51,6 +51,42 @@ export class HTTP {
     this.httpServer = createServer(this.app);
 
     this.app.set('trust proxy', this.httpOptions.trustProxy);
+    this.app.set('view engine', 'ejs');
+    this.app.set('views', '/app/views');
+    this.app.use(express.static('public'));
+
+    // PostCSS middleware for development (on-demand CSS compilation)
+    if (process.env.NODE_ENV !== 'production') {
+      let postcssHandler: ((req: unknown, res: unknown, next: () => void) => void) | null = null;
+
+      // Lazy-load PostCSS middleware to avoid race conditions
+      this.app.use('/css/main.css', (req, res, next) => {
+        if (postcssHandler != null) {
+          postcssHandler(req, res, next);
+        } else {
+          next();
+        }
+      });
+
+      // Load PostCSS middleware asynchronously
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore - These packages lack proper type definitions
+      void import('postcss-middleware').then(({ default: postcssMiddleware }) => {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore - These packages lack proper type definitions
+        void import('tailwindcss').then(({ default: tailwindcss }) => {
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore - These packages lack proper type definitions
+          void import('autoprefixer').then(({ default: autoprefixer }) => {
+            postcssHandler = postcssMiddleware({
+              src: () => 'src/styles/main.css',
+              plugins: [tailwindcss, autoprefixer],
+            });
+          });
+        });
+      });
+    }
+
     this.app.use(bodyParser.json(this.httpOptions.bodyParserOptions));
     this.app.use(
       cors({

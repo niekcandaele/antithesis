@@ -1,0 +1,32 @@
+<header>
+  <div class="navbar bg-base-100 shadow-lg">
+    <div class="navbar-start">
+      <a href="/" class="btn btn-ghost text-xl">
+        <%= typeof config !== 'undefined' && config.APP_NAME ? config.APP_NAME : 'Antithesis' %>
+      </a>
+    </div>
+    
+    <div class="navbar-center">
+      <%- include('nav') %>
+    </div>
+    
+    <div class="navbar-end">
+      <% if (typeof user !== 'undefined' && user) { %>
+        <div class="dropdown dropdown-end">
+          <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar">
+            <div class="w-10 rounded-full bg-neutral text-neutral-content flex items-center justify-center">
+              <span><%= user.email ? user.email.charAt(0).toUpperCase() : 'U' %></span>
+            </div>
+          </div>
+          <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
+            <li><a>Profile</a></li>
+            <li><a>Settings</a></li>
+            <li><a>Logout</a></li>
+          </ul>
+        </div>
+      <% } else { %>
+        <a href="/login" class="btn btn-primary">Login</a>
+      <% } %>
+    </div>
+  </div>
+</header>

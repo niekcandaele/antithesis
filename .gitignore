@@ -34,3 +34,7 @@ coverage/
 
 # TypeScript
 *.tsbuildinfo
+
+# Generated CSS
+public/css/main.css
+public/css/main.css.map

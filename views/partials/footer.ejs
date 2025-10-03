@@ -1,0 +1,21 @@
+<footer class="footer bg-neutral text-neutral-content p-10 mt-auto">
+  <nav>
+    <h6 class="footer-title">Company</h6>
+    <a class="link link-hover" href="/about">About</a>
+    <a class="link link-hover" href="/contact">Contact</a>
+    <a class="link link-hover" href="/privacy">Privacy Policy</a>
+  </nav>
+  <nav>
+    <h6 class="footer-title">Resources</h6>
+    <a class="link link-hover" href="/docs">Documentation</a>
+    <a class="link link-hover" href="/api">API</a>
+    <a class="link link-hover" href="/support">Support</a>
+  </nav>
+  <aside>
+    <p>
+      © <%= new Date().getFullYear() %> 
+      <%= typeof config !== 'undefined' && config.APP_NAME ? config.APP_NAME : 'Antithesis' %>
+      <br/>All rights reserved.
+    </p>
+  </aside>
+</footer>

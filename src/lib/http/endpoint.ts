@@ -56,6 +56,12 @@ export interface EndpointOptions<
   responseContentType: string;
   middlewares?: Middleware[];
   hideFromOpenAPI?: boolean;
+  viewTemplate?: string;
+  viewDataHandler?: (
+    inputs: z.output<InputsSchema>,
+    req: Request,
+    res: Response,
+  ) => Promise<Record<string, unknown>> | Record<string, unknown>;
 }
 
 export class Endpoint<
@@ -176,6 +182,83 @@ export class Endpoint<
     return this;
   }
 
+  /**
+   * Render a view template using EJS.
+   * Automatically includes global context in all views. The data handler can return synchronous
+   * or asynchronous data, which will be merged with the global context before rendering.
+   *
+   * ## Global Context Variables
+   *
+   * All views automatically receive these variables:
+   * - `route`: Current request path (e.g., '/dashboard')
+   * - `config`: Application configuration object (all environment variables from config.ts)
+   * - `flash`: Flash message object (currently a placeholder for future implementation)
+   * - `user`: Authenticated user object from request, or null if not authenticated
+   *
+   * ## Data Handler
+   *
+   * The data handler receives:
+   * - `inputs`: Validated inputs from the request (params, query, body)
+   * - `req`: Express Request object
+   * - `res`: Express Response object
+   *
+   * It should return an object with template variables. These will be merged with the global context.
+   * The data handler can be synchronous or asynchronous (return a Promise).
+   *
+   * @param template - Path to EJS template relative to views directory (e.g., 'pages/dashboard')
+   * @param dataHandler - Function that returns data to pass to the template
+   * @returns The endpoint instance for method chaining
+   *
+   * @example Basic usage
+   * ```ts
+   * get('/dashboard', 'getDashboard')
+   *   .renderView('pages/dashboard', () => {
+   *     return {
+   *       title: 'Dashboard',
+   *       stats: { users: 100, posts: 50 }
+   *     };
+   *   });
+   * ```
+   *
+   * @example Async data handler
+   * ```ts
+   * get('/profile/:id', 'getProfile')
+   *   .input(z.object({
+   *     params: z.object({ id: z.string() })
+   *   }))
+   *   .renderView('pages/profile', async ({ params }) => {
+   *     const user = await getUserById(params.id);
+   *     return {
+   *       title: `Profile - ${user.name}`,
+   *       user
+   *     };
+   *   });
+   * ```
+   *
+   * @example Using global context in templates
+   * ```ejs
+   * <h1>Welcome to <%= config.APP_NAME %></h1>
+   * <p>Current route: <%= route %></p>
+   * <% if (user) { %>
+   *   <p>Hello, <%= user.name %>!</p>
+   * <% } %>
+   * <p><%= title %></p>
+   * ```
+   */
+  renderView<ViewData extends Record<string, unknown>>(
+    template: string,
+    dataHandler: (
+      inputs: z.output<InputsSchema>,
+      req: Request,
+      res: Response,
+    ) => Promise<ViewData> | ViewData,
+  ) {
+    this.options.viewTemplate = template;
+    this.options.viewDataHandler = dataHandler;
+    this.options.responseContentType = 'text/html';
+    return this;
+  }
+
   getName() {
     return this.options.name;
   }
@@ -219,6 +302,14 @@ export class Endpoint<
   getResponseContentType() {
     return this.options.responseContentType;
   }
+
+  getViewTemplate() {
+    return this.options.viewTemplate;
+  }
+
+  getViewDataHandler() {
+    return this.options.viewDataHandler;
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -260,6 +351,34 @@ export const endpointToExpressHandler = (_endpoint: AnyEndpoint) => {
     } catch (error: unknown) {
       const e = error as z.ZodError;
       next(new errors.ValidationError(e.message, e.issues));
+      return;
+    }
+
+    // Check if this is a view rendering endpoint
+    const viewTemplate = _endpoint.getViewTemplate();
+    const viewDataHandler = _endpoint.getViewDataHandler();
+
+    if (viewTemplate != null && viewDataHandler != null) {
+      // Handle view rendering
+      Promise.resolve(viewDataHandler(postValidationInputs, req, res))
+        .then(async (viewData) => {
+          // Import config dynamically to avoid circular dependencies
+          const { config } = (await import('../config.js')) as { config: Record<string, unknown> };
+
+          // Merge view data with global context
+          const mergedContext = {
+            route: req.path,
+            config,
+            flash: {}, // Placeholder for future flash message integration
+            user: (req as { user?: unknown }).user ?? null,
+            ...viewData,
+          };
+
+          res.render(viewTemplate, mergedContext);
+        })
+        .catch((e: unknown) => {
+          next(e);
+        });
       return;
     }
 

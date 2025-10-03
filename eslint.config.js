@@ -23,6 +23,12 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ['dist/', 'node_modules/', 'eslint.config.js'],
+    ignores: [
+      'dist/',
+      'node_modules/',
+      'eslint.config.js',
+      'tailwind.config.js',
+      'postcss.config.js',
+    ],
   },
 );

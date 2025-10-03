@@ -1,6 +1,7 @@
 import { metaController } from './controllers/meta.js';
 import { healthController } from './controllers/health.js';
 import { tenantController } from './controllers/tenants/tenant.controller.js';
+import { dashboardController } from './controllers/dashboard.js';
 import { config } from './lib/config.js';
 import { HTTP } from './lib/http/index.js';
 import { logger } from './lib/logger.js';
@@ -46,7 +47,7 @@ try {
 // Public API Server - User-facing endpoints
 const publicApiServer = new HTTP(
   {
-    controllers: [metaController], // Empty for now, ready for public endpoints
+    controllers: [metaController, dashboardController],
   },
   {
     port: config.PUBLIC_API_PORT,
