@@ -12,19 +12,17 @@ export type Generated<T> =
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
-export interface Users {
+export interface Tenants {
   createdAt: Generated<Timestamp>;
-  email: string;
+  externalReferenceId: string | null;
   id: Generated<string>;
-  isActive: Generated<boolean>;
   name: string;
-  role: Generated<string>;
-  tenantId: string;
+  slug: string;
   updatedAt: Generated<Timestamp>;
 }
 
 export interface DB {
-  users: Users;
+  tenants: Tenants;
 }
 
 /**

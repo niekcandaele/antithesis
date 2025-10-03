@@ -6,7 +6,45 @@ const logFormatSchema = z.enum(['human', 'json']);
 const configSchema = z.object({
   APP_NAME: z.string().default('antithesis'),
   NODE_ENV: z.string().default('development'),
-  PORT: z.coerce.number().default(3000),
+
+  /**
+   * Public API port for user-facing endpoints
+   * @example 3000
+   */
+  PUBLIC_API_PORT: z.coerce.number().default(3000),
+
+  /**
+   * Admin API port for internal admin/tenant management
+   * @example 3001
+   */
+  ADMIN_API_PORT: z.coerce.number().default(3001),
+
+  /**
+   * Meta API port for health/readiness probes
+   * @example 3002
+   */
+  META_API_PORT: z.coerce.number().default(3002),
+
+  /**
+   * Bypass CORS origin checks
+   * Defaults to true in development, false in production
+   * @example true
+   */
+  CORS_BYPASS_ALLOWED_ORIGINS: z
+    .string()
+    .transform((val) => val !== 'false')
+    .default(process.env.NODE_ENV === 'production' ? 'false' : 'true'),
+
+  /**
+   * Comma-separated list of allowed CORS origins
+   * Only used when CORS_BYPASS_ALLOWED_ORIGINS is false
+   * @example 'http://localhost:3000,https://app.example.com'
+   */
+  CORS_ALLOWED_ORIGINS: z
+    .string()
+    .optional()
+    .transform((val) => (val ? val.split(',').filter(Boolean) : [])),
+
   LOG_LEVEL: logLevelSchema.default('info'),
   LOG_FORMAT: logFormatSchema.default(process.env.NODE_ENV === 'production' ? 'json' : 'human'),
 

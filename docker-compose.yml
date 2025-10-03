@@ -38,9 +38,14 @@ services:
       # Prevent node_modules from being overridden
       - /app/node_modules
     ports:
-      - '3000:3000'
+      - '3000:3000' # Public API
+      - '3001:3001' # Admin API
+      - '3002:3002' # Meta API (health/ready)
     environment:
       - NODE_ENV=development
+      - PUBLIC_API_PORT=3000
+      - ADMIN_API_PORT=3001
+      - META_API_PORT=3002
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=antithesis
