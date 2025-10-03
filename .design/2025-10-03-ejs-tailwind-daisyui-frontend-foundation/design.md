@@ -3,9 +3,11 @@
 ## Layer 1: Problem & Requirements
 
 ### Problem Statement
+
 The application currently only serves JSON APIs with embedded HTML responses for documentation (RapiDoc). There's no structured frontend templating system for serving user-facing HTML pages. We need a foundation for building server-rendered HTML interfaces using modern styling frameworks.
 
 ### Current State
+
 - Application uses Express.js with three separate API servers (public, admin, meta)
 - Controllers use custom `Endpoint` abstraction that currently only supports JSON responses
 - HTML is served inline as strings (see src/controllers/meta.ts:35-72)
@@ -16,6 +18,7 @@ The application currently only serves JSON APIs with embedded HTML responses for
 ### Requirements
 
 #### Functional
+
 - REQ-001: The system SHALL support EJS templating for rendering HTML views
 - REQ-002: WHEN a controller renders a view THEN it SHALL use reusable EJS partials for common elements (header, footer, layout)
 - REQ-003: The system SHALL integrate Tailwind CSS for utility-first styling
@@ -27,6 +30,7 @@ The application currently only serves JSON APIs with embedded HTML responses for
 - REQ-009: The system SHALL automatically include global context (route, config, flash messages, user session) in all views
 
 #### Non-Functional
+
 - Performance: CSS should be compiled and minified for production builds during Docker image build
 - Developer Experience: CSS should be built on-demand using PostCSS middleware in development (no separate watch process)
 - Maintainability: Reusable partials should eliminate duplication across views
@@ -34,12 +38,14 @@ The application currently only serves JSON APIs with embedded HTML responses for
 - Theming: Dark theme only to minimize CSS bundle size
 
 ### Constraints
+
 - Must integrate with existing Express.js HTTP abstraction (src/lib/http/app.ts)
 - Must work with current controller/endpoint pattern
 - Must not break existing JSON API responses
 - Development happens in Docker containers, build processes must account for this
 
 ### Success Criteria
+
 - Developers can create new HTML pages using EJS templates
 - Common UI elements (header, footer) are defined once and reused
 - Tailwind CSS classes work in templates
@@ -63,15 +69,15 @@ The application currently only serves JSON APIs with embedded HTML responses for
 ### External Interfaces
 
 #### New Template Rendering API
+
 ```typescript
 // In controller endpoint using .renderView() method
-get('/dashboard', 'getDashboard')
-  .renderView('pages/dashboard', (inputs, req, res) => {
-    return {
-      user: req.user,
-      data: someData
-    };
-  });
+get('/dashboard', 'getDashboard').renderView('pages/dashboard', (inputs, req, res) => {
+  return {
+    user: req.user,
+    data: someData,
+  };
+});
 ```
 
 > **Decision**: Use `.renderView()` method on Endpoint class
@@ -79,6 +85,7 @@ get('/dashboard', 'getDashboard')
 > **Alternative**: Returning raw HTML strings was simpler but less structured
 
 #### Directory Structure
+
 ```
 views/
   layouts/
@@ -103,12 +110,12 @@ src/styles/
 
 ### Alternatives Considered
 
-| Option | Pros | Cons | Why Not Chosen |
-|--------|------|------|----------------|
-| React SSR | Modern, component-based | Heavy build setup, complexity overhead | Over-engineered for server-rendered pages |
-| Handlebars | Simple, logic-less | Less powerful than EJS | User specifically requested EJS |
-| No framework CSS | Full control | Time-consuming, inconsistent | User requested Tailwind/DaisyUI |
-| CDN CSS | Easy setup | Not optimized, unused styles | Best practice is to purge/compile CSS |
+| Option           | Pros                    | Cons                                   | Why Not Chosen                            |
+| ---------------- | ----------------------- | -------------------------------------- | ----------------------------------------- |
+| React SSR        | Modern, component-based | Heavy build setup, complexity overhead | Over-engineered for server-rendered pages |
+| Handlebars       | Simple, logic-less      | Less powerful than EJS                 | User specifically requested EJS           |
+| No framework CSS | Full control            | Time-consuming, inconsistent           | User requested Tailwind/DaisyUI           |
+| CDN CSS          | Easy setup              | Not optimized, unused styles           | Best practice is to purge/compile CSS     |
 
 ## Layer 3: Technical Specification
 
@@ -145,20 +152,21 @@ src/styles/
 
 ### Code Change Analysis
 
-| Component | Action | Justification |
-|-----------|--------|---------------|
-| package.json | Extend | Add ejs, tailwindcss, daisyui, autoprefixer, postcss, postcss-middleware dependencies |
-| src/lib/http/app.ts | Extend | Add EJS view engine, static assets, PostCSS middleware for on-demand CSS |
-| src/lib/http/endpoint.ts | Extend | Add `.renderView()` method for first-class template rendering |
-| views/ | Create | New directory structure for templates and partials |
-| public/ | Create | Static assets directory (images, fonts, js, css for production) |
-| tailwind.config.js | Create | Tailwind config with dark theme only, DaisyUI plugin |
-| postcss.config.js | Create | PostCSS configuration for Tailwind processing |
-| src/styles/main.css | Create | Main CSS entry point with Tailwind directives |
-| package.json scripts | Extend | Add CSS build command for production |
-| Dockerfile | Extend | Build and minify CSS during production image build |
+| Component                | Action | Justification                                                                         |
+| ------------------------ | ------ | ------------------------------------------------------------------------------------- |
+| package.json             | Extend | Add ejs, tailwindcss, daisyui, autoprefixer, postcss, postcss-middleware dependencies |
+| src/lib/http/app.ts      | Extend | Add EJS view engine, static assets, PostCSS middleware for on-demand CSS              |
+| src/lib/http/endpoint.ts | Extend | Add `.renderView()` method for first-class template rendering                         |
+| views/                   | Create | New directory structure for templates and partials                                    |
+| public/                  | Create | Static assets directory (images, fonts, js, css for production)                       |
+| tailwind.config.js       | Create | Tailwind config with dark theme only, DaisyUI plugin                                  |
+| postcss.config.js        | Create | PostCSS configuration for Tailwind processing                                         |
+| src/styles/main.css      | Create | Main CSS entry point with Tailwind directives                                         |
+| package.json scripts     | Extend | Add CSS build command for production                                                  |
+| Dockerfile               | Extend | Build and minify CSS during production image build                                    |
 
 ### Code to Remove
+
 None - this is purely additive. Existing inline HTML in meta.ts:35-72 could optionally be migrated to use the new view system later, but removal is not required.
 
 ### Implementation Approach
@@ -212,7 +220,7 @@ None - this is purely additive. Existing inline HTML in meta.ts:35-72 could opti
 > **Rationale**: Minimizes CSS bundle size, simpler implementation
 > **Alternative**: Multiple themes or system preference would add complexity and bundle size
 
-- **Reusable Partials** (views/partials/*.ejs - new files)
+- **Reusable Partials** (views/partials/\*.ejs - new files)
   - header.ejs: Site logo, navigation, user menu
   - footer.ejs: Copyright, links, scripts
   - nav.ejs: Main navigation component
@@ -238,12 +246,15 @@ None - this is purely additive. Existing inline HTML in meta.ts:35-72 could opti
 > **Alternative**: Runtime compilation would slow startup; committing to git would track generated files
 
 #### Data Models
+
 No database changes required - this is purely presentation layer.
 
 #### Configuration
+
 No configuration changes needed. PostCSS middleware automatically detects NODE_ENV for development/production mode switching.
 
 #### Security
+
 - EJS auto-escapes output by default (prevents XSS)
 - Static assets served with proper MIME types
 - CSP headers should be considered (future enhancement)
@@ -270,6 +281,7 @@ No configuration changes needed. PostCSS middleware automatically detects NODE_E
 ### Rollout Plan
 
 **Phase 1: Infrastructure Setup**
+
 - Install dependencies (ejs, tailwindcss, daisyui, postcss, autoprefixer, postcss-middleware)
 - Create directory structure (views/, public/, src/styles/)
 - Configure Tailwind with dark theme only
@@ -277,12 +289,14 @@ No configuration changes needed. PostCSS middleware automatically detects NODE_E
 - Update Dockerfile for production CSS build
 
 **Phase 2: Base Templates**
+
 - Create base layout with dark theme
 - Create header/footer partials using DaisyUI components
 - Create sample page demonstrating layout usage
 - Add global view context support
 
 **Phase 3: Integration**
+
 - Add EJS engine to Express (src/lib/http/app.ts)
 - Add PostCSS middleware for development
 - Add static asset serving for /public
@@ -290,12 +304,14 @@ No configuration changes needed. PostCSS middleware automatically detects NODE_E
 - Create example controller endpoint
 
 **Phase 4: Testing & Documentation**
+
 - Add unit tests for view rendering
 - Add integration tests for endpoint rendering
 - Verify styles work correctly
 - Document usage patterns and API
 
 **Rollback Strategy**:
+
 - All changes are additive, no breaking changes
 - Can disable by not using new endpoints
 - No database migrations to rollback

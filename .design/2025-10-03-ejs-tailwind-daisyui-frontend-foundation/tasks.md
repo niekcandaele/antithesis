@@ -1,11 +1,13 @@
 # Implementation Tasks: EJS Templating with Tailwind CSS and DaisyUI Frontend Foundation
 
 ## Overview
+
 We're building a server-rendered HTML templating foundation using EJS, Tailwind CSS, and DaisyUI. The approach integrates with the existing Express HTTP abstraction, adds first-class view rendering support to the Endpoint class, and uses PostCSS middleware for on-demand CSS compilation in development while building optimized CSS during Docker image build for production.
 
 This implementation is split into 4 phases: (1) Infrastructure & Dependencies, (2) Base Templates & Styling, (3) Express Integration & View Rendering, and (4) Testing & Documentation.
 
 ## Phase 1: Infrastructure & Dependencies
+
 **Goal**: Install all dependencies and create directory structure
 **Demo**: "At standup, I can show: package.json with all frontend dependencies installed, directory structure created, and Tailwind/PostCSS configs ready"
 
@@ -98,6 +100,7 @@ This implementation is split into 4 phases: (1) Infrastructure & Dependencies, (
   - **Content**: Add `public/css/main.css` and `public/css/main.css.map` to .gitignore
 
 ### Phase 1 Checkpoint
+
 - [x] Run lint: `npm run lint`
 - [x] Run type check: `npm run type-check`
 - [x] Test CSS build: `npm run build:css` (should succeed)
@@ -105,6 +108,7 @@ This implementation is split into 4 phases: (1) Infrastructure & Dependencies, (
 - [x] **Demo ready**: "All dependencies installed, directory structure created, Tailwind CSS compiles successfully"
 
 ## Phase 2: Base Templates & Styling
+
 **Goal**: Create reusable EJS templates with DaisyUI dark theme
 **Demo**: "At standup, I can show: Base layout, header/footer partials, and a sample page all using DaisyUI dark theme components"
 
@@ -162,12 +166,14 @@ This implementation is split into 4 phases: (1) Infrastructure & Dependencies, (
     - Example using global context (config, user, route)
 
 ### Phase 2 Checkpoint
+
 - [x] Manual verification: Open each template file and verify DaisyUI classes are present
 - [x] Verify dark theme: Check base.ejs has `data-theme="dark"` attribute
 - [x] Verify partials: Ensure header/footer/nav use includes correctly
 - [x] **Demo ready**: "Complete template structure with DaisyUI dark theme components ready to render"
 
 ## Phase 3: Express Integration & View Rendering
+
 **Goal**: Integrate EJS with Express and add .renderView() method to Endpoint class
 **Demo**: "At standup, I can show: A working HTML page served from an endpoint, with Tailwind styles applied, all existing JSON endpoints still working"
 
@@ -252,6 +258,7 @@ This implementation is split into 4 phases: (1) Infrastructure & Dependencies, (
     - Added to publicApiServer controllers array
 
 ### Phase 3 Checkpoint
+
 - [x] Run lint: `npm run lint`
 - [x] Run build: `npm run build`
 - [x] Run tests: `npm test` (existing tests should still pass)
@@ -264,6 +271,7 @@ This implementation is split into 4 phases: (1) Infrastructure & Dependencies, (
 - [ ] **Demo ready**: "Dashboard page renders with EJS templates, Tailwind styles applied, DaisyUI dark theme active, existing JSON APIs still work"
 
 ## Phase 4: Testing & Documentation
+
 **Goal**: Add tests for view rendering and document usage patterns
 **Demo**: "At standup, I can show: Tests passing for view rendering, integration test showing HTML output, and usage documentation"
 
@@ -353,6 +361,7 @@ This implementation is split into 4 phases: (1) Infrastructure & Dependencies, (
   - **Changes**: Add GET /components endpoint using .renderView()
 
 ### Phase 4 Checkpoint
+
 - [x] Run all tests: `npm test` - all should pass (Note: Tests created but full suite takes >2min to run)
 - [x] Run lint: `npm run lint` - no errors
 - [x] Run build: `npm run build` - successful
@@ -368,6 +377,7 @@ This implementation is split into 4 phases: (1) Infrastructure & Dependencies, (
 - [x] **Demo ready**: "Full frontend foundation complete: EJS templates, Tailwind CSS, DaisyUI dark theme, view rendering with global context, tests created, production build optimized"
 
 ## Final Verification
+
 - [ ] All requirements from design doc met:
   - REQ-001: EJS templating ✓
   - REQ-002: Reusable partials ✓
