@@ -1,11 +1,15 @@
-import { describe, it } from 'node:test';
+import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
-import { Kysely, SqliteDialect } from 'kysely';
-import Database from 'better-sqlite3';
+import type { Kysely } from 'kysely';
 import { buildQuery, type QueryParams } from './queryBuilder.js';
+import {
+  setupQueryBuilderTestDatabase,
+  teardownTestDatabase,
+  type TestDatabase,
+} from './test-helpers.js';
 
-// Test database schema
-interface TestDatabase {
+// Test database schema for query builder tests
+interface QueryBuilderTestDatabase {
   users: {
     id: string;
     name: string;
@@ -17,17 +21,22 @@ interface TestDatabase {
   };
 }
 
-// Helper to create test database
-function createTestDb(): Kysely<TestDatabase> {
-  return new Kysely<TestDatabase>({
-    dialect: new SqliteDialect({ database: new Database(':memory:') }),
-  });
-}
-
 void describe('Query Builder', () => {
-  void it('should apply IN filter for array values', () => {
-    const db = createTestDb();
+  let testDb: TestDatabase;
+  let db: Kysely<QueryBuilderTestDatabase>;
 
+  before(async () => {
+    // Setup isolated PostgreSQL testcontainer with users table
+    testDb = await setupQueryBuilderTestDatabase();
+    // Cast to our test schema type for type-safe query building
+    db = testDb.db as unknown as Kysely<QueryBuilderTestDatabase>;
+  });
+
+  after(async () => {
+    // Teardown testcontainer after all tests
+    await teardownTestDatabase(testDb);
+  });
+  void it('should apply IN filter for array values', () => {
     const params: QueryParams = {
       filters: { role: ['admin', 'user'] },
     };
@@ -42,8 +51,6 @@ void describe('Query Builder', () => {
   });
 
   void it('should apply equality filter for single values', () => {
-    const db = createTestDb();
-
     const params: QueryParams = {
       filters: { isActive: true },
     };
@@ -57,8 +64,6 @@ void describe('Query Builder', () => {
   });
 
   void it('should apply IS NULL filter for null values', () => {
-    const db = createTestDb();
-
     const params: QueryParams = {
       filters: { email: null },
     };
@@ -70,8 +75,6 @@ void describe('Query Builder', () => {
   });
 
   void it('should apply ILIKE search for case-insensitive matching', () => {
-    const db = createTestDb();
-
     const params: QueryParams = {
       search: { name: 'john' },
     };
@@ -86,8 +89,6 @@ void describe('Query Builder', () => {
   });
 
   void it('should apply greaterThan filter', () => {
-    const db = createTestDb();
-
     const params: QueryParams = {
       greaterThan: { age: 18 },
     };
@@ -101,8 +102,6 @@ void describe('Query Builder', () => {
   });
 
   void it('should apply lessThan filter', () => {
-    const db = createTestDb();
-
     const params: QueryParams = {
       lessThan: { age: 65 },
     };
@@ -116,8 +115,6 @@ void describe('Query Builder', () => {
   });
 
   void it('should apply sorting with default asc direction', () => {
-    const db = createTestDb();
-
     const params: QueryParams = {
       sortBy: 'createdAt',
     };
@@ -130,8 +127,6 @@ void describe('Query Builder', () => {
   });
 
   void it('should apply sorting with desc direction', () => {
-    const db = createTestDb();
-
     const params: QueryParams = {
       sortBy: 'createdAt',
       sortDirection: 'desc',
@@ -145,8 +140,6 @@ void describe('Query Builder', () => {
   });
 
   void it('should apply default pagination (limit 20, page 1)', () => {
-    const db = createTestDb();
-
     const params: QueryParams = {};
 
     const query = buildQuery(db.selectFrom('users'), params);
@@ -160,8 +153,6 @@ void describe('Query Builder', () => {
   });
 
   void it('should apply custom pagination', () => {
-    const db = createTestDb();
-
     const params: QueryParams = {
       page: 3,
       limit: 50,
@@ -178,8 +169,6 @@ void describe('Query Builder', () => {
   });
 
   void it('should enforce maximum limit of 100', () => {
-    const db = createTestDb();
-
     const params: QueryParams = {
       limit: 500, // Exceeds max
     };
@@ -193,8 +182,6 @@ void describe('Query Builder', () => {
   });
 
   void it('should combine multiple filters', () => {
-    const db = createTestDb();
-
     const params: QueryParams = {
       filters: { role: ['admin', 'user'], isActive: true },
       search: { name: 'john' },
@@ -225,8 +212,6 @@ void describe('Query Builder', () => {
   });
 
   void it('should handle empty parameters', () => {
-    const db = createTestDb();
-
     const params: QueryParams = {};
 
     const query = buildQuery(db.selectFrom('users'), params);
@@ -238,8 +223,6 @@ void describe('Query Builder', () => {
   });
 
   void it('should handle empty search value', () => {
-    const db = createTestDb();
-
     const params: QueryParams = {
       search: { name: '' },
     };

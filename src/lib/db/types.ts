@@ -3,28 +3,25 @@
  * Please do not edit it manually.
  */
 
-import type { ColumnType } from 'kysely';
+import type { ColumnType } from "kysely";
 
-export type Generated<T> =
-  T extends ColumnType<infer S, infer I, infer U>
-    ? ColumnType<S, I | undefined, U>
-    : ColumnType<T, T | undefined, T>;
+export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
+  ? ColumnType<S, I | undefined, U>
+  : ColumnType<T, T | undefined, T>;
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
-export interface Users {
+export interface Tenants {
   createdAt: Generated<Timestamp>;
-  email: string;
+  externalReferenceId: string | null;
   id: Generated<string>;
-  isActive: Generated<boolean>;
   name: string;
-  role: Generated<string>;
-  tenantId: string;
+  slug: string;
   updatedAt: Generated<Timestamp>;
 }
 
 export interface DB {
-  users: Users;
+  tenants: Tenants;
 }
 
 /**

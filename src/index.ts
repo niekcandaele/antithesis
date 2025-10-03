@@ -1,5 +1,6 @@
 import { metaController } from './controllers/meta.js';
 import { healthController } from './controllers/health.js';
+import { tenantController } from './controllers/tenants/tenant.controller.js';
 import { config } from './lib/config.js';
 import { HTTP } from './lib/http/index.js';
 import { logger } from './lib/logger.js';
@@ -22,7 +23,7 @@ try {
 
   // Register database health check
   health.registerReadinessHook('database', async () => {
-    await db.selectFrom('users').select('id').limit(1).execute();
+    await db.selectFrom('tenants').select('id').limit(1).execute();
     return true;
   });
 
@@ -42,20 +43,59 @@ try {
   throw error;
 }
 
-const server = new HTTP(
+// Public API Server - User-facing endpoints
+const publicApiServer = new HTTP(
   {
-    controllers: [metaController, healthController],
+    controllers: [metaController], // Empty for now, ready for public endpoints
   },
   {
-    port: config.PORT,
+    port: config.PUBLIC_API_PORT,
+    bypassAllowedOrigins: config.CORS_BYPASS_ALLOWED_ORIGINS,
+    allowedOrigins: config.CORS_ALLOWED_ORIGINS,
     oasInfo: {
-      title: 'Antithesis API',
+      title: 'Antithesis Public API',
       version: '1.0.0',
-      description: 'API for the Antithesis application',
+      description: 'Public API for the Antithesis application',
     },
   },
 );
 
-server.start();
+// Admin API Server - Internal admin/tenant management
+const adminApiServer = new HTTP(
+  {
+    controllers: [metaController, tenantController],
+  },
+  {
+    port: config.ADMIN_API_PORT,
+    bypassAllowedOrigins: config.CORS_BYPASS_ALLOWED_ORIGINS,
+    allowedOrigins: config.CORS_ALLOWED_ORIGINS,
+    oasInfo: {
+      title: 'Antithesis Admin API',
+      version: '1.0.0',
+      description: 'Admin API for tenant management and internal operations',
+    },
+  },
+);
+
+// Meta API Server - Health/readiness probes
+const metaApiServer = new HTTP(
+  {
+    controllers: [healthController],
+  },
+  {
+    port: config.META_API_PORT,
+    bypassAllowedOrigins: config.CORS_BYPASS_ALLOWED_ORIGINS,
+    allowedOrigins: config.CORS_ALLOWED_ORIGINS,
+    oasInfo: {
+      title: 'Antithesis Meta API',
+      version: '1.0.0',
+      description: 'Meta API for health and readiness checks',
+    },
+  },
+);
+
+publicApiServer.start();
+adminApiServer.start();
+metaApiServer.start();
 
 export {};

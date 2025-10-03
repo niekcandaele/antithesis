@@ -56,7 +56,7 @@ void describe('ServerContext with AsyncLocalStorage', () => {
         controllers: [testController],
       },
       {
-        port: 3001,
+        port: 3011,
       },
     );
 
@@ -66,7 +66,7 @@ void describe('ServerContext with AsyncLocalStorage', () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Make request to test endpoint
-    const response = await fetch('http://localhost:3001/context-test');
+    const response = await fetch('http://localhost:3011/context-test');
     const data = (await response.json()) as { success: boolean; results: string[] };
 
     assert.ok(response.ok, 'Response should be ok');
@@ -122,7 +122,7 @@ void describe('ServerContext with AsyncLocalStorage', () => {
         controllers: [testController],
       },
       {
-        port: 3002,
+        port: 3012,
       },
     );
 
@@ -133,8 +133,8 @@ void describe('ServerContext with AsyncLocalStorage', () => {
 
     // Make concurrent requests
     const [response1, response2] = await Promise.all([
-      fetch('http://localhost:3002/concurrent/1'),
-      fetch('http://localhost:3002/concurrent/2'),
+      fetch('http://localhost:3012/concurrent/1'),
+      fetch('http://localhost:3012/concurrent/2'),
     ]);
 
     const data1 = (await response1.json()) as { id: string; contextPreserved: boolean };
