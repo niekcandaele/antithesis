@@ -48,8 +48,14 @@ export class TenantService {
           ? null
           : // eslint-disable-next-line @typescript-eslint/no-base-to-string
             String(entity.externalReferenceId),
-      createdAt: entity.createdAt instanceof Date ? entity.createdAt.toISOString() : String(entity.createdAt),
-      updatedAt: entity.updatedAt instanceof Date ? entity.updatedAt.toISOString() : String(entity.updatedAt),
+      createdAt:
+        entity.createdAt instanceof Date
+          ? entity.createdAt.toISOString()
+          : String(entity.createdAt),
+      updatedAt:
+        entity.updatedAt instanceof Date
+          ? entity.updatedAt.toISOString()
+          : String(entity.updatedAt),
     };
   }
 

@@ -7,7 +7,11 @@ import { Redis } from './lib/redis.js';
 import { metaController } from './controllers/meta.js';
 import { healthController } from './controllers/health.js';
 import { DTO, TenantScoped, isTenantId, type TenantId } from './lib/http/index.js';
-import { setupTestDatabase, teardownTestDatabase, type TestDatabase } from './lib/db/test-helpers.js';
+import {
+  setupTestDatabase,
+  teardownTestDatabase,
+  type TestDatabase,
+} from './lib/db/test-helpers.js';
 
 // Test DTO
 const CreateTenantSchema = z.object({

@@ -61,9 +61,7 @@ export class TenantRepository {
   /**
    * Find a tenant by external reference ID
    */
-  async findByExternalReferenceId(
-    externalReferenceId: string,
-  ): Promise<TenantEntity | undefined> {
+  async findByExternalReferenceId(externalReferenceId: string): Promise<TenantEntity | undefined> {
     const db = getDb();
     return db
       .selectFrom('tenants')

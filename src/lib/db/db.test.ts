@@ -3,7 +3,12 @@ import assert from 'node:assert';
 import type { Kysely } from 'kysely';
 import { buildQuery, type QueryParams } from './queryBuilder.js';
 import { withUpdatedTimestamp } from './BaseModel.js';
-import { setupTestDatabase, teardownTestDatabase, cleanTestDatabase, type TestDatabase } from './test-helpers.js';
+import {
+  setupTestDatabase,
+  teardownTestDatabase,
+  cleanTestDatabase,
+  type TestDatabase,
+} from './test-helpers.js';
 import type { Database } from './types.js';
 
 void describe('Database Integration', () => {
