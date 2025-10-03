@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof title !== 'undefined' ? title : 'Dashboard' %> - Antithesis</title>
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+  <%- include('../partials/header') %>
+
+  <main class="container mx-auto px-4 py-8">
+    <div class="space-y-6">
+  <!-- Page Header -->
+  <div class="flex justify-between items-center">
+    <h1 class="text-3xl font-bold"><%= typeof title !== 'undefined' ? title : 'Dashboard' %></h1>
+    <div class="text-sm breadcrumbs">
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li>Dashboard</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats shadow w-full">
+    <div class="stat">
+      <div class="stat-title">Total Users</div>
+      <div class="stat-value"><%= typeof stats !== 'undefined' && stats.users ? stats.users : '0' %></div>
+      <div class="stat-desc">↗︎ 400 (22%)</div>
+    </div>
+    
+    <div class="stat">
+      <div class="stat-title">Total Requests</div>
+      <div class="stat-value"><%= typeof stats !== 'undefined' && stats.requests ? stats.requests : '0' %></div>
+      <div class="stat-desc">↗︎ 90 (14%)</div>
+    </div>
+    
+    <div class="stat">
+      <div class="stat-title">Active Sessions</div>
+      <div class="stat-value"><%= typeof stats !== 'undefined' && stats.sessions ? stats.sessions : '0' %></div>
+      <div class="stat-desc">↘︎ 12 (3%)</div>
+    </div>
+  </div>
+
+  <!-- Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="card bg-base-100 shadow-xl">
+      <div class="card-body">
+        <h2 class="card-title">Recent Activity</h2>
+        <p>Monitor your application's recent events and activities.</p>
+        <div class="card-actions justify-end">
+          <button class="btn btn-primary">View All</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card bg-base-100 shadow-xl">
+      <div class="card-body">
+        <h2 class="card-title">System Status</h2>
+        <p>Current route: <span class="badge badge-primary"><%= typeof route !== 'undefined' ? route : 'unknown' %></span></p>
+        <p>App: <span class="badge badge-secondary"><%= typeof config !== 'undefined' && config.APP_NAME ? config.APP_NAME : 'Antithesis' %></span></p>
+        <div class="card-actions justify-end">
+          <button class="btn btn-ghost">Details</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data Table (if data passed) -->
+  <% if (typeof data !== 'undefined' && data.length > 0) { %>
+    <div class="card bg-base-100 shadow-xl">
+      <div class="card-body">
+        <h2 class="card-title">Data Overview</h2>
+        <div class="overflow-x-auto">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% data.forEach(function(item) { %>
+                <tr>
+                  <td><%= item.id %></td>
+                  <td><%= item.name %></td>
+                  <td><span class="badge badge-success"><%= item.status %></span></td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  <% } %>
+    </div>
+  </main>
+
+  <%- include('../partials/footer') %>
+</body>
+</html>

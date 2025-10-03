@@ -33,7 +33,13 @@ services:
       dockerfile: Dockerfile.dev
     volumes:
       - ./src:/app/src
+      - ./views:/app/views
+      - ./public:/app/public
       - ./tsconfig.json:/app/tsconfig.json
+      - ./package.json:/app/package.json
+      - ./eslint.config.js:/app/eslint.config.js
+      - ./tailwind.config.js:/app/tailwind.config.js
+      - ./postcss.config.js:/app/postcss.config.js
       - ./.env:/app/.env
       # Prevent node_modules from being overridden
       - /app/node_modules

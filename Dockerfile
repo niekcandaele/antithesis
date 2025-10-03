@@ -7,8 +7,15 @@ COPY package*.json ./
 RUN npm ci
 
 COPY tsconfig.json ./
+COPY tailwind.config.js ./
+COPY postcss.config.js ./
 COPY src ./src
+COPY views ./views
 
+# Build CSS for production
+RUN npm run build:css
+
+# Build TypeScript
 RUN npm run build
 
 # Production stage
@@ -20,6 +27,8 @@ COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/views ./views
 
 EXPOSE 3000
 

@@ -290,4 +290,58 @@ void describe('E2E Integration Test', () => {
     assert.ok(tenant.id);
     assert.strictEqual(tenant.name, 'Log Test Tenant');
   });
+
+  void it('should return JSON responses for existing API endpoints (regression test)', async () => {
+    // Verify OpenAPI endpoint still returns JSON
+    const openapiResponse = await fetch(`http://localhost:${String(port)}/openapi.json`);
+    const contentType = openapiResponse.headers.get('content-type');
+
+    assert.ok(
+      contentType?.includes('application/json'),
+      `OpenAPI endpoint should return JSON, got: ${contentType ?? 'null'}`,
+    );
+
+    const openapi = (await openapiResponse.json()) as { openapi: string };
+    assert.ok(openapi.openapi, 'OpenAPI spec should have openapi version field');
+  });
+
+  void it('should return JSON responses for health endpoints (regression test)', async () => {
+    // Verify healthz endpoint still returns JSON
+    const healthResponse = await fetch(`http://localhost:${String(port)}/healthz`);
+    const contentType = healthResponse.headers.get('content-type');
+
+    assert.ok(
+      contentType?.includes('application/json'),
+      `Health endpoint should return JSON, got: ${contentType ?? 'null'}`,
+    );
+
+    const health = (await healthResponse.json()) as { data: unknown };
+    assert.ok(health.data, 'Health response should have data field');
+  });
+
+  void it('should return JSON responses for POST endpoints (regression test)', async () => {
+    const validData = {
+      name: 'JSON Regression Test',
+      slug: 'json-regression-test',
+    };
+
+    const response = await fetch(`http://localhost:${String(port)}/e2e/tenants`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-tenant-id': '00000000-0000-0000-0000-000000000099',
+      },
+      body: JSON.stringify(validData),
+    });
+
+    const contentType = response.headers.get('content-type');
+    assert.ok(
+      contentType?.includes('application/json'),
+      `POST endpoint should return JSON, got: ${contentType ?? 'null'}`,
+    );
+
+    const data = (await response.json()) as { data: unknown; meta: unknown };
+    assert.ok(data.data, 'Response should have data field');
+    assert.ok(data.meta, 'Response should have meta field');
+  });
 });
