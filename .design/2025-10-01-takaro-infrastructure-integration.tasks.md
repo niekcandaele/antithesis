@@ -350,7 +350,7 @@ Integrating core Takaro infrastructure components (TenantScoped, DTO, Health, Da
 
 ### Tasks
 
-- [ ] 5.1: Initialize database in main application
+- [x] 5.1: Initialize database in main application
   - **Output**: Database initialized on app start with migrations (dev only)
   - **Files**: `src/index.ts` (modify)
   - **Verify**: App starts, database connects, migrations run in dev
@@ -359,35 +359,35 @@ Integrating core Takaro infrastructure components (TenantScoped, DTO, Health, Da
     - Run migrations if NODE_ENV === 'development'
     - Add error handling for connection failures
 
-- [ ] 5.2: Register database health check
+- [x] 5.2: Register database health check
   - **Depends on**: 5.1
   - **Output**: Database health check registered as readiness hook
   - **Files**: `src/index.ts` (modify)
   - **Verify**: /readyz endpoint checks database connection
   - **Details**: Use `health.registerReadinessHook('database', async () => db.raw('SELECT 1'))`
 
-- [ ] 5.3: Initialize Redis client and register health check
+- [x] 5.3: Initialize Redis client and register health check
   - **Depends on**: 5.1
   - **Output**: Redis client initialized, health check auto-registered
   - **Files**: `src/index.ts` (modify)
   - **Verify**: /readyz endpoint checks Redis connection
   - **Details**: Call Redis.getClient() during startup, health hook auto-registers
 
-- [ ] 5.4: Register health controller
+- [x] 5.4: Register health controller
   - **Depends on**: 5.2, 5.3
   - **Output**: Health controller added to app
   - **Files**: `src/index.ts` (modify)
   - **Verify**: /healthz and /readyz endpoints accessible
   - **Details**: Add healthController to controllers array
 
-- [ ] 5.5: Export public API from lib/http/index.ts
+- [x] 5.5: Export public API from lib/http/index.ts
   - **Output**: DTO, TenantScoped, TenantId, health exported
   - **Files**: `src/lib/http/index.ts` (modify)
   - **Verify**: All types and classes are importable
   - **JSDoc**: Add re-export documentation
   - **Details**: Export from new modules for public API
 
-- [ ] 5.6: Write integration test for DTO in endpoints
+- [x] 5.6: Write integration test for DTO in endpoints
   - **Output**: Test endpoint using DTO with OpenAPI spec verification
   - **Files**: `src/lib/http/dto.test.ts` (new)
   - **Verify**: Test passes, OpenAPI spec includes DTO schema
@@ -397,7 +397,7 @@ Integrating core Takaro infrastructure components (TenantScoped, DTO, Health, Da
     - Test invalid DTO data (422 validation error)
     - Verify OpenAPI spec includes DTO schema with Zod JSON schema conversion
 
-- [ ] 5.7: Write E2E test for full workflow
+- [x] 5.7: Write E2E test for full workflow
   - **Output**: End-to-end test of entire system
   - **Files**: `src/e2e.test.ts` (new)
   - **Verify**: Test passes, entire workflow works
@@ -411,17 +411,17 @@ Integrating core Takaro infrastructure components (TenantScoped, DTO, Health, Da
 
 ### Phase 5 Checkpoint
 
-- [ ] Run lint: `npm run lint`
-- [ ] Run format: `npm run format`
-- [ ] Run build: `npm run build`
-- [ ] Run tests: `npm test`
-- [ ] Start app: `docker compose up`
-- [ ] Manual verification:
+- [x] Run lint: `npm run lint`
+- [x] Run format: `npm run format`
+- [x] Run build: `npm run build`
+- [x] Run tests: `npm test`
+- [x] Start app: `docker compose up`
+- [x] Manual verification:
   - Visit /healthz and /readyz endpoints
   - Verify database and Redis health checks
   - Check /openapi.json for DTO schemas
   - Test DTO endpoint with valid/invalid data
-- [ ] **Demo ready**: Show full application with all components working, health checks, DTO validation, tenant isolation
+- [x] **Demo ready**: Show full application with all components working, health checks, DTO validation, tenant isolation
 
 ## Phase 6: Final Validation & Documentation
 
