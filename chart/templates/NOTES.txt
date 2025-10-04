@@ -1,0 +1,31 @@
+Thank you for installing {{ .Chart.Name }}!
+
+Your Keycloak resources have been deployed.
+
+===== NEXT STEPS =====
+
+1. Wait for resources to sync (this may take 1-2 minutes):
+
+   kubectl get realms.realm.keycloak.crossplane.io
+   kubectl get clients.openidclient.keycloak.crossplane.io
+
+2. Extract client secrets:
+
+   # OIDC Client Secret
+   kubectl get secret antithesis-oidc-credentials -o jsonpath='{.data.attribute\.client_secret}' | base64 -d
+
+   # Admin Client Secret
+   kubectl get secret antithesis-admin-credentials -o jsonpath='{.data.attribute\.client_secret}' | base64 -d
+
+3. Configure Admin Client Service Account:
+
+   - Log into Keycloak Admin Console
+   - Navigate to Realm: {{ .Values.keycloak.realm.name }}
+   - Go to Clients → {{ .Values.keycloak.adminClient.id }}
+   - Assign service account roles for organization management
+
+4. Update your application .env file with the extracted secrets
+
+For detailed instructions, see: chart/README.md
+
+======================

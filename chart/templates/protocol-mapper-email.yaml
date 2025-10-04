@@ -1,0 +1,31 @@
+{{- if .Values.keycloak.mappers.email.enabled }}
+apiVersion: client.keycloak.crossplane.io/v1alpha1
+kind: ProtocolMapper
+metadata:
+  name: {{ .Values.keycloak.oidcClient.id }}-email-mapper
+spec:
+  providerConfigRef:
+    name: {{ .Values.keycloak.providerConfigRef }}
+  forProvider:
+    realmId: {{ .Values.keycloak.realm.name }}
+    clientIdRef:
+      name: {{ .Values.keycloak.oidcClient.id }}-client
+    name: "email"
+    protocol: "openid-connect"
+
+    # Standard email mapper
+    protocolMapper: "oidc-usermodel-property-mapper"
+
+    config:
+      # Map user.email to email claim
+      "user.attribute": "email"
+      "claim.name": "email"
+
+      # JSON type
+      "jsonType.label": "String"
+
+      # Include in different token types
+      "userinfo.token.claim": "true"
+      "id.token.claim": "true"
+      "access.token.claim": "true"
+{{- end }}

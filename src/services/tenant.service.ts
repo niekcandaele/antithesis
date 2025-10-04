@@ -5,6 +5,7 @@ import {
   type UpdateTenantData,
 } from '../db/tenant.repository.js';
 import type { QueryParams } from '../lib/db/queryBuilder.js';
+import { keycloakAdminService } from './keycloak-admin.service.js';
 
 /**
  * Plain tenant object returned by service
@@ -14,6 +15,7 @@ export interface Tenant {
   name: string;
   slug: string;
   externalReferenceId: string | null;
+  keycloakOrganizationId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -36,6 +38,7 @@ export class TenantService {
     name: unknown;
     slug: unknown;
     externalReferenceId: unknown;
+    keycloakOrganizationId: unknown;
     createdAt: unknown;
     updatedAt: unknown;
   }): Tenant {
@@ -48,6 +51,11 @@ export class TenantService {
           ? null
           : // eslint-disable-next-line @typescript-eslint/no-base-to-string
             String(entity.externalReferenceId),
+      keycloakOrganizationId:
+        entity.keycloakOrganizationId === null || entity.keycloakOrganizationId === undefined
+          ? null
+          : // eslint-disable-next-line @typescript-eslint/no-base-to-string
+            String(entity.keycloakOrganizationId),
       createdAt:
         entity.createdAt instanceof Date
           ? entity.createdAt.toISOString()
@@ -94,6 +102,7 @@ export class TenantService {
   /**
    * Create a new tenant
    * @throws {ConflictError} If slug already exists
+   * @throws {Error} If Keycloak organization creation fails
    */
   async createTenant(data: CreateTenantData): Promise<Tenant> {
     // Check if slug already exists
@@ -102,7 +111,18 @@ export class TenantService {
       throw new ConflictError('Tenant with this slug already exists');
     }
 
-    const created = await tenantRepository.create(data);
+    // Create Keycloak organization FIRST (fail-fast)
+    // If this fails, no local tenant is created
+    const keycloakOrg = await keycloakAdminService.createOrganization(data.name);
+
+    // Store organization ID in tenant data
+    const tenantData: CreateTenantData = {
+      ...data,
+      keycloakOrganizationId: keycloakOrg.id,
+    };
+
+    // Create local tenant with Keycloak organization ID
+    const created = await tenantRepository.create(tenantData);
     return this.mapToPlain(created);
   }
 

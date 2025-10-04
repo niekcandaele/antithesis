@@ -1,0 +1,45 @@
+# Development environment values
+# Usage: helm install antithesis-keycloak ./chart -f chart/values-dev.yaml
+
+keycloak:
+  providerConfigRef: keycloak-provider-config
+  url: https://sso.next.takaro.dev
+
+  realm:
+    enabled: true
+    name: antithesis-dev
+    displayName: 'Antithesis Platform (Development)'
+    registrationAllowed: true # Allow registration in dev
+    verifyEmail: false # Don't require email verification in dev
+    organizationsEnabled: true # Enable Organizations feature (Keycloak 26+)
+
+  oidcClient:
+    enabled: true
+    id: antithesis-app-dev
+    redirectUris:
+      - 'http://localhost:3000/auth/callback'
+      - 'http://localhost:3000/*'
+      - 'http://devbox:3000/auth/callback'
+      - 'http://devbox:3000/*'
+    postLogoutRedirectUris:
+      - 'http://localhost:3000'
+      - 'http://localhost:3000/'
+      - 'http://devbox:3000'
+      - 'http://devbox:3000/'
+    webOrigins:
+      - 'http://localhost:3000'
+      - 'http://devbox:3000'
+      - '*' # Allow all origins in dev
+
+  adminClient:
+    enabled: true
+    id: antithesis-admin-dev
+
+  mappers:
+    organizations:
+      enabled: true
+      claimName: 'organizations'
+    email:
+      enabled: true
+
+namespace: default

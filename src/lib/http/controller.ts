@@ -68,6 +68,24 @@ export const controller = (name: string) =>
     middlewares: [],
   });
 
+/**
+ * Join controller base path with endpoint path
+ * Handles leading/trailing slashes correctly
+ */
+function joinPaths(basePath: string, endpointPath: string): string {
+  // Root controller - no prefix
+  if (basePath === '/' || basePath === '') {
+    return endpointPath;
+  }
+
+  // Normalize paths - ensure leading slash
+  const base = basePath.startsWith('/') ? basePath : `/${basePath}`;
+  const endpoint = endpointPath.startsWith('/') ? endpointPath : `/${endpointPath}`;
+
+  // Join and remove double slashes
+  return `${base}${endpoint}`.replace(/\/+/g, '/');
+}
+
 export const bindControllerToApp = (_controller: Controller, app: Application) => {
   const controllerBeforeMiddlewares = _controller
     .getMiddlewares()
@@ -77,8 +95,10 @@ export const bindControllerToApp = (_controller: Controller, app: Application) =
     .filter((m) => m.type === MiddlewareTypes.AFTER);
 
   _controller.getEndpoints().forEach((endpoint) => {
+    const fullPath = joinPaths(_controller.getName() ?? '/', endpoint.getPath());
+
     app[endpoint.getMethod()](
-      endpoint.getPath(),
+      fullPath,
       // Controller before middleware
       ...controllerBeforeMiddlewares.map((m) => m.handler),
 

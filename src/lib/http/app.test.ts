@@ -5,7 +5,7 @@ import { controller, get } from './index.js';
 
 void describe('HTTP App - Static Assets and CSS', () => {
   let server: HTTP;
-  const port = 3052;
+  const port = 3054;
 
   const testController = controller('/').endpoints([
     get('/test', 'test').handler(() => Promise.resolve({ message: 'test' })),

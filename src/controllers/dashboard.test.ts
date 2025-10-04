@@ -1,7 +1,27 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
-import { HTTP } from '../lib/http/index.js';
-import { dashboardController } from './dashboard.js';
+import { HTTP, controller, get } from '../lib/http/index.js';
+
+// Create a test-specific dashboard controller without authentication
+// to test the rendering functionality in isolation
+const testDashboardController = controller('/').endpoints([
+  get('/dashboard', 'getDashboard').renderView('pages/dashboard', () => {
+    return {
+      title: 'Dashboard',
+      currentTenantId: null,
+      stats: {
+        users: 1234,
+        requests: 5678,
+        sessions: 42,
+      },
+      data: [
+        { id: 1, name: 'Example Item 1', status: 'active' },
+        { id: 2, name: 'Example Item 2', status: 'active' },
+        { id: 3, name: 'Example Item 3', status: 'active' },
+      ],
+    };
+  }),
+]);
 
 void describe('Dashboard Controller', () => {
   let server: HTTP;
@@ -9,7 +29,7 @@ void describe('Dashboard Controller', () => {
 
   before(() => {
     server = new HTTP(
-      { controllers: [dashboardController] },
+      { controllers: [testDashboardController] },
       {
         port,
         oasInfo: {

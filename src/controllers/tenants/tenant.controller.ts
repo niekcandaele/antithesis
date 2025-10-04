@@ -24,7 +24,7 @@ export const tenantController = controller('tenants')
     /**
      * List all tenants with optional filtering and pagination
      */
-    get('/tenants', 'listTenants')
+    get('/', 'listTenants')
       .description('List all tenants with pagination and filtering')
       .input(
         z.object({
@@ -49,7 +49,7 @@ export const tenantController = controller('tenants')
     /**
      * Get a specific tenant by ID
      */
-    get('/tenants/:id', 'getTenant')
+    get('/:id', 'getTenant')
       .description('Get a tenant by ID')
       .input(
         z.object({
@@ -67,7 +67,7 @@ export const tenantController = controller('tenants')
     /**
      * Create a new tenant
      */
-    post('/tenants', 'createTenant')
+    post('/', 'createTenant')
       .description('Create a new tenant')
       .input(
         z.object({
@@ -83,7 +83,7 @@ export const tenantController = controller('tenants')
     /**
      * Update a tenant
      */
-    put('/tenants/:id', 'updateTenant')
+    put('/:id', 'updateTenant')
       .description('Update a tenant')
       .input(
         z.object({
@@ -102,7 +102,7 @@ export const tenantController = controller('tenants')
     /**
      * Delete a tenant
      */
-    del('/tenants/:id', 'deleteTenant')
+    del('/:id', 'deleteTenant')
       .description('Delete a tenant')
       .input(
         z.object({

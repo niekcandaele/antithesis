@@ -10,6 +10,7 @@ export interface CreateTenantData {
   name: string;
   slug: string;
   externalReferenceId?: string | null;
+  keycloakOrganizationId?: string | null;
 }
 
 /**
@@ -19,6 +20,7 @@ export interface UpdateTenantData {
   name?: string;
   slug?: string;
   externalReferenceId?: string | null;
+  keycloakOrganizationId?: string | null;
 }
 
 /**
@@ -67,6 +69,20 @@ export class TenantRepository {
       .selectFrom('tenants')
       .selectAll()
       .where('externalReferenceId', '=', externalReferenceId)
+      .executeTakeFirst();
+  }
+
+  /**
+   * Find a tenant by Keycloak organization ID
+   */
+  async findByKeycloakOrganizationId(
+    keycloakOrganizationId: string,
+  ): Promise<TenantEntity | undefined> {
+    const db = getDb();
+    return db
+      .selectFrom('tenants')
+      .selectAll()
+      .where('keycloakOrganizationId', '=', keycloakOrganizationId)
       .executeTakeFirst();
   }
 

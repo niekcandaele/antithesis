@@ -12,17 +12,51 @@ export type Generated<T> =
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
+export interface Roles {
+  createdAt: Generated<Timestamp>;
+  id: Generated<string>;
+  name: string;
+  updatedAt: Generated<Timestamp>;
+}
+
 export interface Tenants {
   createdAt: Generated<Timestamp>;
   externalReferenceId: string | null;
   id: Generated<string>;
+  keycloakOrganizationId: string | null;
   name: string;
   slug: string;
   updatedAt: Generated<Timestamp>;
 }
 
+export interface UserRoles {
+  createdAt: Generated<Timestamp>;
+  roleId: string;
+  tenantId: string;
+  userId: string;
+}
+
+export interface Users {
+  createdAt: Generated<Timestamp>;
+  email: string;
+  id: Generated<string>;
+  keycloakUserId: string;
+  lastTenantId: string | null;
+  updatedAt: Generated<Timestamp>;
+}
+
+export interface UserTenants {
+  createdAt: Generated<Timestamp>;
+  tenantId: string;
+  userId: string;
+}
+
 export interface DB {
+  roles: Roles;
   tenants: Tenants;
+  user_roles: UserRoles;
+  user_tenants: UserTenants;
+  users: Users;
 }
 
 /**

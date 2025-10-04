@@ -118,6 +118,66 @@ const configSchema = z.object({
     .string()
     .transform((val) => val !== 'false')
     .default('true'),
+
+  /**
+   * Keycloak server URL
+   * @example 'https://keycloak.example.com'
+   */
+  KEYCLOAK_URL: z.string().url().default('http://keycloak.local'),
+
+  /**
+   * Keycloak realm name
+   * @example 'antithesis'
+   */
+  KEYCLOAK_REALM: z.string().default('antithesis'),
+
+  /**
+   * Keycloak OIDC client ID
+   * @example 'antithesis-app'
+   */
+  KEYCLOAK_CLIENT_ID: z.string().default('antithesis-app'),
+
+  /**
+   * Keycloak OIDC client secret
+   * @example 'secret'
+   */
+  KEYCLOAK_CLIENT_SECRET: z.string().default('secret'),
+
+  /**
+   * Keycloak Admin API client ID (service account)
+   * @example 'antithesis-admin'
+   */
+  KEYCLOAK_ADMIN_CLIENT_ID: z.string().default('antithesis-admin'),
+
+  /**
+   * Keycloak Admin API client secret
+   * @example 'admin-secret'
+   */
+  KEYCLOAK_ADMIN_CLIENT_SECRET: z.string().default('admin-secret'),
+
+  /**
+   * Session secret for encryption
+   * @example 'random-secret-key'
+   */
+  SESSION_SECRET: z.string().default('development-session-secret-change-in-production'),
+
+  /**
+   * Session maximum age in milliseconds
+   * @example 86400000 (24 hours)
+   */
+  SESSION_MAX_AGE: z.coerce.number().default(86400000),
+
+  /**
+   * Public API URL for OAuth redirects
+   * @example 'http://localhost:3000'
+   */
+  PUBLIC_API_URL: z.string().url().default('http://localhost:3000'),
+
+  /**
+   * Views directory path for EJS templates
+   * @example 'views' or '/app/views'
+   */
+  VIEWS_DIR: z.string().default('views'),
 });
 
 export type Config = z.infer<typeof configSchema>;

@@ -60,6 +60,14 @@
         <h2 class="card-title">System Status</h2>
         <p>Current route: <span class="badge badge-primary"><%= typeof route !== 'undefined' ? route : 'unknown' %></span></p>
         <p>App: <span class="badge badge-secondary"><%= typeof config !== 'undefined' && config.APP_NAME ? config.APP_NAME : 'Antithesis' %></span></p>
+        <% if (typeof user !== 'undefined' && user) { %>
+          <p>User: <span class="badge badge-accent"><%= user.email %></span></p>
+          <% if (typeof currentTenantId !== 'undefined' && currentTenantId) { %>
+            <p>Current Tenant: <span class="badge badge-info"><%= currentTenantId %></span></p>
+          <% } else { %>
+            <p>Current Tenant: <span class="badge badge-warning">No tenant assigned</span></p>
+          <% } %>
+        <% } %>
         <div class="card-actions justify-end">
           <button class="btn btn-ghost">Details</button>
         </div>

@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express, { Application } from 'express';
 
+import { config } from '../config.js';
 import { logger } from '../logger.js';
 import { bindControllerToApp, Controller } from './controller.js';
 import * as errors from './errors.js';
@@ -52,7 +53,7 @@ export class HTTP {
 
     this.app.set('trust proxy', this.httpOptions.trustProxy);
     this.app.set('view engine', 'ejs');
-    this.app.set('views', '/app/views');
+    this.app.set('views', config.VIEWS_DIR);
     this.app.use(express.static('public'));
 
     // PostCSS middleware for development (on-demand CSS compilation)

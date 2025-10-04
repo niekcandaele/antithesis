@@ -1,0 +1,37 @@
+# Production environment values
+# Usage: helm install antithesis-keycloak ./chart -f chart/values-prod.yaml
+
+keycloak:
+  providerConfigRef: keycloak-provider-config
+
+  realm:
+    enabled: true
+    name: antithesis
+    displayName: 'Antithesis Platform'
+    registrationAllowed: false # No self-registration in prod
+    verifyEmail: true # Require email verification
+
+  oidcClient:
+    enabled: true
+    id: antithesis-app
+    redirectUris:
+      # UPDATE THESE FOR YOUR PRODUCTION DOMAIN
+      - 'https://antithesis.example.com/auth/callback'
+    postLogoutRedirectUris:
+      - 'https://antithesis.example.com'
+      - 'https://antithesis.example.com/'
+    webOrigins:
+      - 'https://antithesis.example.com'
+
+  adminClient:
+    enabled: true
+    id: antithesis-admin
+
+  mappers:
+    organizations:
+      enabled: true
+      claimName: 'organizations'
+    email:
+      enabled: true
+
+namespace: antithesis
