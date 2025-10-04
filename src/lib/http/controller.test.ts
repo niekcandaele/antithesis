@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/require-await */
 import { describe, test } from 'node:test';
 import assert from 'node:assert';
 import { controller, bindControllerToApp } from './controller.js';

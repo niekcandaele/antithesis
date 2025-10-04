@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/unbound-method */
+/* eslint-disable @typescript-eslint/require-await */
 import { describe, test, mock } from 'node:test';
 import assert from 'node:assert';
 import { authService } from '../services/auth.service.js';
@@ -52,12 +54,10 @@ describe('Auth Controller Integration Tests', () => {
     };
 
     const originalSyncUser = userService.syncUserFromKeycloak;
-    // eslint-disable-next-line @typescript-eslint/require-await
     userService.syncUserFromKeycloak = mock.fn(async () => mockUser);
 
     // Mock userService.determineCurrentTenant
     const originalDetermineTenant = userService.determineCurrentTenant;
-    // eslint-disable-next-line @typescript-eslint/require-await
     userService.determineCurrentTenant = mock.fn(async () => 'tenant-1');
 
     // Mock session object
@@ -107,7 +107,6 @@ describe('Auth Controller Integration Tests', () => {
     const mockSession = {
       userId: 'user-123',
       currentTenantId: 'tenant-1',
-      // eslint-disable-next-line @typescript-eslint/unbound-method
       destroy: mock.fn((callback: (err?: Error) => void) => {
         sessionDestroyed = true;
         callback();
@@ -139,12 +138,11 @@ describe('Auth Controller Integration Tests', () => {
   test('tenant switching: validates access and updates session', async () => {
     // Mock userTenantRepository.hasAccess
     const originalHasAccess = userTenantRepository.hasAccess;
-    // eslint-disable-next-line @typescript-eslint/unbound-method, @typescript-eslint/require-await
     userTenantRepository.hasAccess = mock.fn(async () => true);
 
     // Mock userService.updateLastTenant
     const originalUpdateLastTenant = userService.updateLastTenant;
-    // eslint-disable-next-line @typescript-eslint/unbound-method, @typescript-eslint/no-empty-function, @typescript-eslint/require-await
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
     userService.updateLastTenant = mock.fn(async () => {});
 
     // Mock session and request
@@ -176,7 +174,6 @@ describe('Auth Controller Integration Tests', () => {
   test('tenant switching: rejects unauthorized access', async () => {
     // Mock userTenantRepository.hasAccess to return false
     const originalHasAccess = userTenantRepository.hasAccess;
-    // eslint-disable-next-line @typescript-eslint/unbound-method, @typescript-eslint/require-await
     userTenantRepository.hasAccess = mock.fn(async () => false);
 
     // Mock session

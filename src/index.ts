@@ -79,16 +79,17 @@ try {
 const sessionRedisClient = await Redis.getClient('sessions');
 
 // @ts-expect-error - TypeScript incorrectly treats RedisStore as type-only but it works at runtime
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
 const redisStore = new RedisStore({
   client: sessionRedisClient.raw,
   prefix: 'session:',
 });
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const sessionMiddleware = middleware({
   name: 'session',
   type: MiddlewareTypes.BEFORE,
   handler: session({
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     store: redisStore,
     secret: config.SESSION_SECRET,
     resave: false,

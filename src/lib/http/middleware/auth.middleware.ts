@@ -29,6 +29,7 @@ export const populateUser = middleware({
   name: 'populateUser',
   type: MiddlewareTypes.BEFORE,
   handler: async (req: Request, _res: Response, next: NextFunction) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (req.session && req.session.userId) {
       try {
         const user = await userRepository.findById(req.session.userId);
@@ -54,8 +55,10 @@ export const requireAuth = middleware({
   name: 'requireAuth',
   type: MiddlewareTypes.BEFORE,
   handler: (req: Request, res: Response, next: NextFunction) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!req.session || !req.session.userId || !req.user) {
       // Save the original URL to redirect back after login
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (req.session) {
         req.session.returnTo = req.originalUrl;
       }

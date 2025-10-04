@@ -22,14 +22,12 @@ describe('TenantService - Keycloak Organization Integration', () => {
     };
 
     const originalCreateOrg = keycloakAdminService.createOrganization;
-    // eslint-disable-next-line @typescript-eslint/unbound-method
     keycloakAdminService.createOrganization = mock.fn(async () => mockKeycloakOrg);
 
     // Mock tenant repository methods
     const originalFindBySlug = tenantRepository.findBySlug;
     const originalCreate = tenantRepository.create;
 
-    // eslint-disable-next-line @typescript-eslint/unbound-method
     tenantRepository.findBySlug = mock.fn(async () => undefined); // No existing tenant
 
     const mockTenantEntity = {
@@ -42,7 +40,6 @@ describe('TenantService - Keycloak Organization Integration', () => {
       updatedAt: new Date(),
     };
 
-    // eslint-disable-next-line @typescript-eslint/unbound-method
     tenantRepository.create = mock.fn(async (data) => {
       assert.strictEqual(data.keycloakOrganizationId, 'keycloak-org-123');
       return mockTenantEntity;
@@ -61,7 +58,6 @@ describe('TenantService - Keycloak Organization Integration', () => {
     assert.strictEqual(result.keycloakOrganizationId, 'keycloak-org-123');
 
     // Verify Keycloak organization was created
-    // eslint-disable-next-line @typescript-eslint/unbound-method
     assert.strictEqual(
       (keycloakAdminService.createOrganization as unknown as ReturnType<typeof mock.fn>).mock.calls
         .length,
@@ -97,7 +93,6 @@ describe('TenantService - Keycloak Organization Integration', () => {
     const originalFindBySlug = tenantRepository.findBySlug;
     const originalCreate = tenantRepository.create;
 
-    // eslint-disable-next-line @typescript-eslint/unbound-method
     tenantRepository.findBySlug = mock.fn(async () => undefined); // No existing tenant
     tenantRepository.create = mock.fn(async () => {
       throw new Error('Should not be called');
