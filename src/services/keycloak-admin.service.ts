@@ -54,31 +54,41 @@ export class KeycloakAdminService {
    * Service account client must be configured with appropriate roles
    */
   async authenticate(): Promise<void> {
-    const params = new URLSearchParams({
-      grant_type: 'client_credentials',
-      client_id: config.KEYCLOAK_ADMIN_CLIENT_ID,
-      client_secret: config.KEYCLOAK_ADMIN_CLIENT_SECRET,
-    });
+    try {
+      const params = new URLSearchParams({
+        grant_type: 'client_credentials',
+        client_id: config.KEYCLOAK_ADMIN_CLIENT_ID,
+        client_secret: config.KEYCLOAK_ADMIN_CLIENT_SECRET,
+      });
 
-    const response = await fetch(this.tokenUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: params.toString(),
-    });
+      const response = await fetch(this.tokenUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: params.toString(),
+      });
 
-    if (!response.ok) {
-      const error = await response.text();
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(
+          `Failed to authenticate with Keycloak Admin API (${String(response.status)}). ` +
+            `This could be due to incorrect client credentials, missing service account configuration, or network issues. ` +
+            `Details: ${error}`,
+        );
+      }
+
+      const tokenData = (await response.json()) as TokenResponse;
+      this.accessToken = tokenData.access_token;
+      // Set expiry with 5 second buffer to avoid edge cases
+      this.tokenExpiry = Date.now() + (tokenData.expires_in - 5) * 1000;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       throw new Error(
-        `Failed to authenticate with Keycloak Admin API: ${String(response.status)} ${error}`,
+        `Failed to connect to Keycloak Admin API. Please verify Keycloak is running and accessible. ` +
+          `Original error: ${errorMessage}`,
       );
     }
-
-    const tokenData = (await response.json()) as TokenResponse;
-    this.accessToken = tokenData.access_token;
-    // Set expiry with 5 second buffer to avoid edge cases
-    this.tokenExpiry = Date.now() + (tokenData.expires_in - 5) * 1000;
   }
 
   /**

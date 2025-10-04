@@ -157,9 +157,13 @@ const configSchema = z.object({
 
   /**
    * Session secret for encryption
+   * MUST be changed in production for security
    * @example 'random-secret-key'
    */
-  SESSION_SECRET: z.string().default('development-session-secret-change-in-production'),
+  SESSION_SECRET: z
+    .string()
+    .min(32, 'SESSION_SECRET must be at least 32 characters in production')
+    .default('development-session-secret-change-in-production'),
 
   /**
    * Session maximum age in milliseconds
@@ -183,7 +187,42 @@ const configSchema = z.object({
 export type Config = z.infer<typeof configSchema>;
 
 function loadConfig(): Config {
-  return configSchema.parse(process.env);
+  const config = configSchema.parse(process.env);
+
+  // Production validation - ensure critical secrets are changed from defaults
+  if (config.NODE_ENV === 'production') {
+    const warnings: string[] = [];
+
+    if (config.SESSION_SECRET === 'development-session-secret-change-in-production') {
+      warnings.push(
+        'SESSION_SECRET is using default value in production - this is a security risk!',
+      );
+    }
+
+    if (config.KEYCLOAK_CLIENT_SECRET === 'secret') {
+      warnings.push('KEYCLOAK_CLIENT_SECRET is using default value in production');
+    }
+
+    if (config.KEYCLOAK_ADMIN_CLIENT_SECRET === 'admin-secret') {
+      warnings.push('KEYCLOAK_ADMIN_CLIENT_SECRET is using default value in production');
+    }
+
+    if (config.KEYCLOAK_URL === 'http://keycloak.local') {
+      warnings.push('KEYCLOAK_URL is using default value - configure to point to real Keycloak');
+    }
+
+    if (warnings.length > 0) {
+      // eslint-disable-next-line no-console
+      console.error('⚠️  Production configuration warnings:');
+      warnings.forEach((warning) => {
+        // eslint-disable-next-line no-console
+        console.error(`   - ${warning}`);
+      });
+      throw new Error('Invalid production configuration - see warnings above');
+    }
+  }
+
+  return config;
 }
 
 export const config: Config = loadConfig();

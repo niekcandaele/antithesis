@@ -6,6 +6,9 @@ import { authService } from '../services/auth.service.js';
 import { userService } from '../services/user.service.js';
 import { userTenantRepository } from '../db/user-tenant.repository.js';
 import { config } from '../lib/config.js';
+import { logger } from '../lib/logger.js';
+
+const log = logger('auth');
 
 /**
  * Generate a random state parameter for CSRF protection
@@ -118,6 +121,14 @@ export const authController = controller('/auth')
 
         req.session.currentTenantId = currentTenantId;
 
+        // Audit log: successful login
+        log.info('User login successful', {
+          userId: user.id,
+          email: user.email,
+          tenantId: currentTenantId,
+          timestamp: new Date().toISOString(),
+        });
+
         // Get return URL (defaults to /dashboard if not set)
         const returnTo = req.session.returnTo ?? '/dashboard';
         req.session.returnTo = undefined;
@@ -145,6 +156,16 @@ export const authController = controller('/auth')
       .description('Logout user and destroy session')
       .hideFromOpenAPI()
       .handler(async (_inputs, req, res) => {
+        // Audit log: logout event (before destroying session)
+        if (req.session.userId && req.user) {
+          log.info('User logout', {
+            userId: req.session.userId,
+            email: req.user.email,
+            tenantId: req.session.currentTenantId,
+            timestamp: new Date().toISOString(),
+          });
+        }
+
         // Get Keycloak logout URL first
         const logoutUrl = authService.getLogoutUrl(config.PUBLIC_API_URL);
 
@@ -216,6 +237,15 @@ export const authController = controller('/auth')
 
         // Update user's lastTenantId
         await userService.updateLastTenant(userId, tenantId);
+
+        // Audit log: tenant switch
+        log.info('User switched tenant', {
+          userId,
+          email: req.user.email,
+          previousTenantId: req.session.currentTenantId,
+          newTenantId: tenantId,
+          timestamp: new Date().toISOString(),
+        });
 
         return apiResponse({
           currentTenantId: tenantId,

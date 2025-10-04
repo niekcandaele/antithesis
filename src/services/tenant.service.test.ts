@@ -62,11 +62,22 @@ describe('TenantService - Keycloak Organization Integration', () => {
 
     // Verify Keycloak organization was created
     // eslint-disable-next-line @typescript-eslint/unbound-method
-    assert.strictEqual((keycloakAdminService.createOrganization as unknown as ReturnType<typeof mock.fn>).mock.calls.length, 1);
-    assert.strictEqual((keycloakAdminService.createOrganization as unknown as ReturnType<typeof mock.fn>).mock.calls[0].arguments[0], 'Test Organization');
+    assert.strictEqual(
+      (keycloakAdminService.createOrganization as unknown as ReturnType<typeof mock.fn>).mock.calls
+        .length,
+      1,
+    );
+    assert.strictEqual(
+      (keycloakAdminService.createOrganization as unknown as ReturnType<typeof mock.fn>).mock
+        .calls[0].arguments[0],
+      'Test Organization',
+    );
 
     // Verify tenant was created with Keycloak organization ID
-    assert.strictEqual((tenantRepository.create as unknown as ReturnType<typeof mock.fn>).mock.calls.length, 1);
+    assert.strictEqual(
+      (tenantRepository.create as unknown as ReturnType<typeof mock.fn>).mock.calls.length,
+      1,
+    );
 
     // Restore
     keycloakAdminService.createOrganization = originalCreateOrg;
@@ -107,10 +118,17 @@ describe('TenantService - Keycloak Organization Integration', () => {
     );
 
     // Verify Keycloak organization creation was attempted
-    assert.strictEqual((keycloakAdminService.createOrganization as unknown as ReturnType<typeof mock.fn>).mock.calls.length, 1);
+    assert.strictEqual(
+      (keycloakAdminService.createOrganization as unknown as ReturnType<typeof mock.fn>).mock.calls
+        .length,
+      1,
+    );
 
     // Verify tenant was NOT created (fail-fast)
-    assert.strictEqual((tenantRepository.create as unknown as ReturnType<typeof mock.fn>).mock.calls.length, 0);
+    assert.strictEqual(
+      (tenantRepository.create as unknown as ReturnType<typeof mock.fn>).mock.calls.length,
+      0,
+    );
 
     // Restore
     keycloakAdminService.createOrganization = originalCreateOrg;
@@ -155,10 +173,17 @@ describe('TenantService - Keycloak Organization Integration', () => {
     );
 
     // Verify slug check was performed
-    assert.strictEqual((tenantRepository.findBySlug as unknown as ReturnType<typeof mock.fn>).mock.calls.length, 1);
+    assert.strictEqual(
+      (tenantRepository.findBySlug as unknown as ReturnType<typeof mock.fn>).mock.calls.length,
+      1,
+    );
 
     // Verify Keycloak organization was NOT created (fail-fast)
-    assert.strictEqual((keycloakAdminService.createOrganization as unknown as ReturnType<typeof mock.fn>).mock.calls.length, 0);
+    assert.strictEqual(
+      (keycloakAdminService.createOrganization as unknown as ReturnType<typeof mock.fn>).mock.calls
+        .length,
+      0,
+    );
 
     // Restore
     tenantRepository.findBySlug = originalFindBySlug;

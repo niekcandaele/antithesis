@@ -15,6 +15,7 @@ import { health } from './lib/health.js';
 import { Redis } from './lib/redis.js';
 import { populateUser } from './lib/http/middleware/auth.middleware.js';
 import { authService } from './services/auth.service.js';
+import { roleService } from './services/role.service.js';
 
 const log = logger('app');
 
@@ -37,6 +38,18 @@ try {
   log.info('Database connected and ready');
 } catch (error) {
   log.error('Failed to initialize database', { error });
+  throw error;
+}
+
+// Seed roles
+try {
+  log.info('Seeding roles...');
+  const seededRoles = await roleService.seedRoles();
+  log.info(`Seeded ${String(seededRoles.length)} roles`, {
+    roles: seededRoles.map((r) => r.name),
+  });
+} catch (error) {
+  log.error('Failed to seed roles', { error });
   throw error;
 }
 

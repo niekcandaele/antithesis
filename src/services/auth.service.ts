@@ -31,11 +31,21 @@ export class AuthService {
    * Initialize OIDC client by discovering Keycloak endpoints
    */
   async initialize(): Promise<void> {
-    this.oidcConfig = await client.discovery(
-      new URL(this.issuerUrl),
-      config.KEYCLOAK_CLIENT_ID,
-      config.KEYCLOAK_CLIENT_SECRET,
-    );
+    try {
+      this.oidcConfig = await client.discovery(
+        new URL(this.issuerUrl),
+        config.KEYCLOAK_CLIENT_ID,
+        config.KEYCLOAK_CLIENT_SECRET,
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error during OIDC discovery';
+      throw new Error(
+        `Failed to connect to Keycloak at ${this.issuerUrl}. ` +
+          `Please verify KEYCLOAK_URL and KEYCLOAK_REALM are configured correctly. ` +
+          `Original error: ${errorMessage}`,
+      );
+    }
   }
 
   /**
@@ -77,38 +87,50 @@ export class AuthService {
    * @returns User claims with organization membership
    */
   async handleCallback(state: string, callbackUrl: string): Promise<UserClaims> {
-    const oidcConfig = await this.ensureInitialized();
+    try {
+      const oidcConfig = await this.ensureInitialized();
 
-    // Exchange authorization code for tokens
-    const tokens = await client.authorizationCodeGrant(oidcConfig, new URL(callbackUrl), {
-      expectedState: state,
-      pkceCodeVerifier: undefined, // Not using PKCE for server-side flow
-    });
+      // Exchange authorization code for tokens
+      const tokens = await client.authorizationCodeGrant(oidcConfig, new URL(callbackUrl), {
+        expectedState: state,
+        pkceCodeVerifier: undefined, // Not using PKCE for server-side flow
+      });
 
-    // Validate ID token and extract claims
-    const idTokenClaims = tokens.claims();
-    if (!idTokenClaims) {
-      throw new Error('ID token missing claims');
+      // Validate ID token and extract claims
+      const idTokenClaims = tokens.claims();
+      if (!idTokenClaims) {
+        throw new Error('ID token missing claims');
+      }
+      if (!idTokenClaims.sub) {
+        throw new Error('ID token missing sub claim');
+      }
+      if (!idTokenClaims.email) {
+        throw new Error('ID token missing email claim');
+      }
+
+      // Fetch organization membership from UserInfo endpoint
+      const userInfo = await client.fetchUserInfo(
+        oidcConfig,
+        tokens.access_token,
+        idTokenClaims.sub,
+      );
+
+      // Extract organization IDs
+      // Keycloak Organizations may provide org IDs in various formats
+      const organizations = this.extractOrganizations(userInfo);
+
+      return {
+        keycloakUserId: idTokenClaims.sub,
+        email: idTokenClaims.email as string,
+        organizations,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(
+        `Authentication failed. This could be due to network issues, Keycloak configuration, or an invalid authorization code. ` +
+          `Original error: ${errorMessage}`,
+      );
     }
-    if (!idTokenClaims.sub) {
-      throw new Error('ID token missing sub claim');
-    }
-    if (!idTokenClaims.email) {
-      throw new Error('ID token missing email claim');
-    }
-
-    // Fetch organization membership from UserInfo endpoint
-    const userInfo = await client.fetchUserInfo(oidcConfig, tokens.access_token, idTokenClaims.sub);
-
-    // Extract organization IDs
-    // Keycloak Organizations may provide org IDs in various formats
-    const organizations = this.extractOrganizations(userInfo);
-
-    return {
-      keycloakUserId: idTokenClaims.sub,
-      email: idTokenClaims.email as string,
-      organizations,
-    };
   }
 
   /**
