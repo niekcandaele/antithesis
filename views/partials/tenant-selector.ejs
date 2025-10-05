@@ -1,0 +1,93 @@
+<%
+// Tenant selector dropdown component
+// Shows only if user has multiple tenants
+// Requires: userTenants (array), currentTenantId (string)
+const hasMultipleTenants = typeof userTenants !== 'undefined' && Array.isArray(userTenants) && userTenants.length > 1;
+const currentTenant = typeof userTenants !== 'undefined' && typeof currentTenantId !== 'undefined' && currentTenantId
+  ? userTenants.find(t => t.id === currentTenantId)
+  : null;
+%>
+
+<% if (hasMultipleTenants) { %>
+  <div class="dropdown dropdown-end mr-4">
+    <div tabindex="0" role="button" class="btn btn-ghost btn-sm" data-testid="tenant-selector">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+      </svg>
+      <span class="hidden sm:inline ml-2">
+        <%= currentTenant ? currentTenant.name : 'Select Organization' %>
+      </span>
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+      </svg>
+    </div>
+    <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-64">
+      <li class="menu-title px-4 py-2">
+        <span class="text-xs font-semibold">Switch Organization</span>
+      </li>
+      <% userTenants.forEach(function(tenant) { %>
+        <li>
+          <a
+            class="tenant-switch-link <%= tenant.id === currentTenantId ? 'active' : '' %>"
+            data-tenant-id="<%= tenant.id %>"
+            data-testid="tenant-option"
+            <% if (tenant.id === currentTenantId) { %>data-selected="true"<% } %>
+            href="#"
+          >
+            <div class="flex flex-col items-start">
+              <span class="font-medium"><%= tenant.name %></span>
+              <span class="text-xs opacity-60"><%= tenant.slug %></span>
+            </div>
+            <% if (tenant.id === currentTenantId) { %>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+            <% } %>
+          </a>
+        </li>
+      <% }); %>
+    </ul>
+  </div>
+
+  <script>
+    // Tenant switching functionality
+    document.addEventListener('DOMContentLoaded', function() {
+      const tenantLinks = document.querySelectorAll('.tenant-switch-link');
+
+      tenantLinks.forEach(link => {
+        link.addEventListener('click', async function(e) {
+          e.preventDefault();
+
+          const tenantId = this.getAttribute('data-tenant-id');
+          const currentTenantId = '<%= currentTenantId %>';
+
+          // Don't switch if already on this tenant
+          if (tenantId === currentTenantId) {
+            return;
+          }
+
+          try {
+            const response = await fetch('/auth/tenant', {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ tenantId: tenantId })
+            });
+
+            if (response.ok) {
+              // Reload page to refresh with new tenant context
+              window.location.reload();
+            } else {
+              const error = await response.json();
+              alert('Failed to switch organization: ' + (error.message || 'Unknown error'));
+            }
+          } catch (error) {
+            console.error('Failed to switch tenant:', error);
+            alert('Failed to switch organization. Please try again.');
+          }
+        });
+      });
+    });
+  </script>
+<% } %>

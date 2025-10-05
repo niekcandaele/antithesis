@@ -4,6 +4,8 @@ import { controller, get, put, apiResponse, zApiOutput } from '../lib/http/index
 import { UnauthorizedError, ForbiddenError } from '../lib/http/errors.js';
 import { authService } from '../services/auth.service.js';
 import { userService } from '../services/user.service.js';
+import { tenantService } from '../services/tenant.service.js';
+import { keycloakAdminService } from '../services/keycloak-admin.service.js';
 import { userTenantRepository } from '../db/user-tenant.repository.js';
 import { config } from '../lib/config.js';
 import { logger } from '../lib/logger.js';
@@ -104,22 +106,81 @@ export const authController = controller('/auth')
         // Create session with user ID
         req.session.userId = user.id;
 
+        // Auto-provision tenant for users without any tenants
+        const userTenantIds = await userTenantRepository.findTenantsForUser(user.id);
+        if (userTenantIds.length === 0) {
+          log.info('Auto-provisioning tenant for user without organizations', {
+            userId: user.id,
+            email: user.email,
+          });
+
+          const orgName = `${user.email}'s Organization`;
+
+          // Check if Keycloak organization already exists
+          const existingOrg = await keycloakAdminService.findOrganizationByName(orgName);
+
+          let tenantId: string;
+          let keycloakOrgId: string;
+
+          if (existingOrg) {
+            // Organization exists in Keycloak - find or create local tenant
+            log.info('Found existing Keycloak organization, syncing to local tenant', {
+              userId: user.id,
+              keycloakOrgId: existingOrg.id,
+              orgName,
+            });
+
+            const existingTenant = await tenantService.findByKeycloakOrganizationId(existingOrg.id);
+
+            if (existingTenant) {
+              tenantId = existingTenant.id;
+              keycloakOrgId = existingOrg.id;
+            } else {
+              // Keycloak org exists but no local tenant - create local tenant
+              const newTenant = await tenantService.createTenantWithExistingOrg({
+                name: orgName,
+                slug: `${user.email.split('@')[0]}-${String(Date.now())}`,
+                keycloakOrganizationId: existingOrg.id,
+              });
+              tenantId = newTenant.id;
+              keycloakOrgId = existingOrg.id;
+            }
+          } else {
+            // No Keycloak organization - create both Keycloak org and local tenant
+            const newTenant = await tenantService.createTenant({
+              name: orgName,
+              slug: `${user.email.split('@')[0]}-${String(Date.now())}`,
+            });
+            tenantId = newTenant.id;
+            // createTenant always sets keycloakOrganizationId - guaranteed by createOrganization call
+            if (!newTenant.keycloakOrganizationId) {
+              throw new Error('Tenant created without Keycloak organization ID');
+            }
+            keycloakOrgId = newTenant.keycloakOrganizationId;
+          }
+
+          // Add user to Keycloak organization
+          await keycloakAdminService.addUserToOrganization(keycloakOrgId, user.keycloakUserId);
+
+          // Add local user-tenant relationship
+          await userTenantRepository.addRelationship(user.id, tenantId);
+
+          // Update user's last tenant
+          await userService.updateLastTenant(user.id, tenantId);
+
+          log.info('Auto-provisioned tenant for user', {
+            userId: user.id,
+            email: user.email,
+            tenantId,
+            keycloakOrgId,
+            orgName,
+          });
+        }
+
         // Determine current tenant (last accessed or first available)
         const currentTenantId = await userService.determineCurrentTenant(user.id);
 
-        if (!currentTenantId) {
-          // User has no tenant access - destroy session and redirect to error
-          await new Promise<void>((resolve) => {
-            req.session.destroy(() => {
-              resolve();
-            });
-          });
-          // TODO: Create a proper "no access" view
-          res.redirect('/auth/login?error=no_tenant_access');
-          return apiResponse({});
-        }
-
-        req.session.currentTenantId = currentTenantId;
+        req.session.currentTenantId = currentTenantId ?? undefined;
 
         // Audit log: successful login
         log.info('User login successful', {
@@ -249,6 +310,58 @@ export const authController = controller('/auth')
 
         return apiResponse({
           currentTenantId: tenantId,
+        });
+      }),
+
+    /**
+     * Get user's tenant list
+     * Returns all tenants the authenticated user has access to
+     */
+    get('tenants', 'getUserTenants')
+      .description('Get list of tenants for the authenticated user')
+      .response(
+        zApiOutput(
+          z.object({
+            tenants: z.array(
+              z.object({
+                id: z.string(),
+                name: z.string(),
+                slug: z.string(),
+              }),
+            ),
+            currentTenantId: z.string().nullable(),
+          }),
+        ),
+      )
+      .handler(async (_inputs, req) => {
+        // Require authentication
+        if (!req.session.userId || !req.user) {
+          throw new UnauthorizedError('Authentication required');
+        }
+
+        const userId = req.session.userId;
+
+        // Get user's tenant IDs
+        const tenantIds = await userTenantRepository.findTenantsForUser(userId);
+
+        // Fetch tenant details from tenant service (bypassing tenant scoping)
+        const { tenantRepository } = await import('../db/tenant.repository.js');
+        const tenants = [];
+
+        for (const tenantId of tenantIds) {
+          const tenant = await tenantRepository.findById(tenantId);
+          if (tenant) {
+            tenants.push({
+              id: tenant.id,
+              name: tenant.name,
+              slug: tenant.slug,
+            });
+          }
+        }
+
+        return apiResponse({
+          tenants,
+          currentTenantId: req.session.currentTenantId ?? null,
         });
       }),
   ]);

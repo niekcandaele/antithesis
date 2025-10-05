@@ -6,6 +6,10 @@ import { healthController } from './controllers/health.js';
 import { tenantController } from './controllers/tenants/tenant.controller.js';
 import { dashboardController } from './controllers/dashboard.js';
 import { authController } from './controllers/auth.controller.js';
+import { albumsController } from './controllers/albums/albums.controller.js';
+import { albumsWebController } from './controllers/albums/albums.web.controller.js';
+import { photosController, albumPhotosController } from './controllers/photos/photos.controller.js';
+import { photosWebController } from './controllers/photos/photos.web.controller.js';
 import { config } from './lib/config.js';
 import { HTTP, middleware, MiddlewareTypes } from './lib/http/index.js';
 import { logger } from './lib/logger.js';
@@ -14,6 +18,7 @@ import { runMigrations } from './lib/db/migrations.js';
 import { health } from './lib/health.js';
 import { Redis } from './lib/redis.js';
 import { populateUser } from './lib/http/middleware/auth.middleware.js';
+import { tenantResolution } from './lib/http/middleware/tenantResolution.middleware.js';
 import { authService } from './services/auth.service.js';
 import { roleService } from './services/role.service.js';
 
@@ -106,8 +111,17 @@ const sessionMiddleware = middleware({
 // Public API Server - User-facing endpoints
 const publicApiServer = new HTTP(
   {
-    controllers: [metaController, authController, dashboardController],
-    middlewares: [sessionMiddleware, populateUser],
+    controllers: [
+      metaController,
+      authController,
+      dashboardController,
+      albumsWebController,
+      photosWebController,
+      albumsController,
+      photosController,
+      albumPhotosController,
+    ],
+    middlewares: [sessionMiddleware, populateUser, tenantResolution],
   },
   {
     port: config.PUBLIC_API_PORT,

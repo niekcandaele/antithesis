@@ -89,6 +89,7 @@ export class HTTP {
     }
 
     this.app.use(bodyParser.json(this.httpOptions.bodyParserOptions));
+    this.app.use(bodyParser.urlencoded({ extended: true }));
     this.app.use(
       cors({
         credentials: true,
@@ -118,10 +119,10 @@ export class HTTP {
 
     // Set default middlewares
     this.options.middlewares = [
-      ...(this.options.middlewares ?? []),
       getServerContextMiddleware({
         oas: this.oasInstance,
       }),
+      ...(this.options.middlewares ?? []),
       errorHandlerMiddleware,
     ];
 

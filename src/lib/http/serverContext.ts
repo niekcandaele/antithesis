@@ -6,6 +6,7 @@ import { Oas } from './oas.js';
 
 export interface ServerContext {
   oas: Oas;
+  tenantId?: string;
 }
 
 class ServerContextManager {
@@ -21,6 +22,11 @@ class ServerContextManager {
       throw new Error('No server context found, was the getServerContextMiddleware used?');
     }
     return context;
+  }
+
+  updateContext(updates: Partial<ServerContext>): void {
+    const context = this.getContext();
+    Object.assign(context, updates);
   }
 }
 
@@ -39,4 +45,8 @@ export const getServerContextMiddleware = (serverContext: ServerContext) =>
 
 export const getServerContext = (): ServerContext => {
   return contextManager.getContext();
+};
+
+export const setTenantId = (tenantId: string): void => {
+  contextManager.updateContext({ tenantId });
 };

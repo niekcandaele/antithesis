@@ -2,6 +2,37 @@ import type { SelectQueryBuilder } from 'kysely';
 import type { TenantId } from '../types.js';
 
 /**
+ * @deprecated This manual tenant scoping approach has been replaced by TenantAwareRepository.
+ *
+ * Instead of manually calling withTenantScope() on every query, extend TenantAwareRepository
+ * which automatically handles tenant scoping for all CRUD operations.
+ *
+ * @see TenantAwareRepository in src/lib/db/TenantAwareRepository.ts
+ *
+ * @example Migration from withTenantScope to TenantAwareRepository
+ * ```typescript
+ * // OLD APPROACH (deprecated):
+ * const users = await withTenantScope(
+ *   db.selectFrom('users'),
+ *   tenantId
+ * ).selectAll().execute();
+ *
+ * // NEW APPROACH (recommended):
+ * class UsersRepository extends TenantAwareRepository {
+ *   async findAll(): Promise<User[]> {
+ *     const tenantId = this.getTenantId(); // Automatic context lookup
+ *     return db.selectFrom('users')
+ *       .where('tenantId', '=', tenantId)
+ *       .selectAll()
+ *       .execute();
+ *   }
+ * }
+ * ```
+ *
+ * This file is kept for reference only and may be removed in a future version.
+ *
+ * ---
+ *
  * Apply tenant scoping to a Kysely query
  *
  * Adds a WHERE clause to filter results by tenantId. This ensures that

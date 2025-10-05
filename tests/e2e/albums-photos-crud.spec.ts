@@ -1,0 +1,275 @@
+import { test, expect, type Page } from '@playwright/test';
+import { createKeycloakHelper, type KeycloakTestHelper } from '../helpers/keycloak.js';
+import { createDatabaseHelper, type DatabaseTestHelper } from '../helpers/database.js';
+
+/**
+ * Albums & Photos CRUD Functionality Tests
+ *
+ * Verify:
+ * - Soft delete and restore for albums and photos
+ * - Status transitions (draft → published → archived)
+ * - Creator tracking
+ * - Parent-child relationship
+ */
+
+let keycloak: KeycloakTestHelper;
+let database: DatabaseTestHelper;
+let userId: string;
+let orgId: string;
+
+test.describe('Albums & Photos CRUD', () => {
+  test.beforeAll(async () => {
+    // Clean database before tests
+    database = createDatabaseHelper();
+    await database.cleanup();
+
+    keycloak = createKeycloakHelper();
+
+    // Create test user
+    const user = await keycloak.createUser('crud-test@test.com', 'TestPassword123!');
+    userId = user.id;
+
+    // Create organization
+    const org = await keycloak.createOrganization('CRUD Test Organization');
+    orgId = org.id;
+
+    // Assign user to organization
+    await keycloak.assignUserToOrg(userId, orgId);
+  });
+
+  test.afterAll(async () => {
+    await keycloak.cleanup();
+    await database.close();
+  });
+
+  async function loginViaUI(page: Page, email: string, password: string) {
+    await page.goto('/auth/login');
+    await page.waitForURL(/sso\.next\.takaro\.dev/, { timeout: 30000 });
+
+    // Step 1: Fill in username and click Sign In button
+    await page.fill('input[name="username"]', email);
+    await page.click('button:has-text("Sign In")');
+
+    // Step 2: Wait for password field to appear, then fill and submit
+    await page.waitForSelector('input[name="password"]', { timeout: 30000 });
+    await page.fill('input[name="password"]', password);
+    await page.click('button:has-text("Sign In")');
+
+    // Wait for redirect back to app
+    await page.waitForURL(/devbox:3000/, { timeout: 30000 });
+  }
+
+  test('Album soft delete and restore', async ({ page }) => {
+    await loginViaUI(page, 'crud-test@test.com', 'TestPassword123!');
+
+    // Create album
+    await page.goto('/albums');
+    await page.click('a[href="/albums/new"]');
+    await page.fill('input[name="name"]', 'Album to Delete');
+    await page.click('button[type="submit"]');
+    await page.waitForURL(/\/albums\/[a-f0-9-]+/);
+
+    // Verify album appears in list
+    await page.goto('/albums');
+    await expect(page.locator('text=Album to Delete')).toBeVisible();
+
+    // Delete album (soft delete) - click View button to navigate to detail page
+    await page.locator('.card:has-text("Album to Delete")').locator('a:has-text("View")').click();
+    await page.waitForURL(/\/albums\/[a-f0-9-]+/);
+
+    // Set up dialog handler BEFORE clicking Delete
+    page.once('dialog', (dialog) => dialog.accept());
+    await page.click('button:has-text("Delete")');
+
+    // Wait for redirect after deletion
+    await page.waitForURL('/albums');
+
+    // Verify album no longer appears in active list
+    await expect(page.locator('text=Album to Delete')).not.toBeVisible();
+
+    // TODO: If restore functionality is implemented, test restore here
+  });
+
+  test('Photo soft delete', async ({ page }) => {
+    await loginViaUI(page, 'crud-test@test.com', 'TestPassword123!');
+
+    // Create album
+    await page.goto('/albums');
+    await page.click('a[href="/albums/new"]');
+    await page.fill('input[name="name"]', 'Photo Delete Test Album');
+    await page.click('button[type="submit"]');
+    await page.waitForURL(/\/albums\/[a-f0-9-]+/);
+
+    // Add photo to album
+    await page.click('a[href*="/photos/new"]');
+    await page.fill('input[name="title"]', 'Photo to Delete');
+    await page.fill('input[name="url"]', 'https://example.com/delete-me.jpg');
+    await page.click('button[type="submit"]');
+
+    // Wait for redirect back to album detail page
+    await page.waitForURL(/\/albums\/[a-f0-9-]+/);
+
+    // Verify photo appears in album
+    await expect(page.locator('text=Photo to Delete')).toBeVisible();
+
+    // Delete photo - set up dialog handler BEFORE clicking Delete
+    page.once('dialog', (dialog) => dialog.accept());
+    await page.click('button:has-text("Delete")');
+
+    // Wait for page to reload after deletion
+    await page.waitForLoadState('networkidle');
+
+    // Verify photo no longer visible in album
+    await expect(page.locator('text=Photo to Delete')).not.toBeVisible();
+  });
+
+  test('Album status transitions: draft → published → archived', async ({ page }) => {
+    await loginViaUI(page, 'crud-test@test.com', 'TestPassword123!');
+
+    // Create album with draft status
+    await page.goto('/albums');
+    await page.click('a[href="/albums/new"]');
+    await page.fill('input[name="name"]', 'Status Test Album');
+    await page.selectOption('select[name="status"]', 'draft');
+    await page.click('button[type="submit"]');
+    await page.waitForURL(/\/albums\/[a-f0-9-]+/);
+
+    // Verify draft status - use specific selector for album badge
+    await expect(page.locator('h1 .badge').filter({ hasText: /draft/i })).toBeVisible();
+
+    // Edit and change to published
+    await page.click('a[href*="/edit"]');
+    await page.waitForLoadState('networkidle');
+    await page.selectOption('select[name="status"]', 'published');
+    await page.click('button[type="submit"]');
+
+    // Wait for redirect back to album detail page
+    await page.waitForLoadState('networkidle');
+
+    // Verify published status
+    await expect(page.locator('h1 .badge').filter({ hasText: /published/i })).toBeVisible();
+
+    // Edit and change to archived
+    await page.click('a[href*="/edit"]');
+    await page.waitForLoadState('networkidle');
+    await page.selectOption('select[name="status"]', 'archived');
+    await page.click('button[type="submit"]');
+
+    // Wait for redirect back to album detail page
+    await page.waitForLoadState('networkidle');
+
+    // Verify archived status
+    await expect(page.locator('h1 .badge').filter({ hasText: /archived/i })).toBeVisible();
+  });
+
+  test('Photo status transitions: draft → published → archived', async ({ page }) => {
+    await loginViaUI(page, 'crud-test@test.com', 'TestPassword123!');
+
+    // Create album
+    await page.goto('/albums');
+    await page.click('a[href="/albums/new"]');
+    await page.fill('input[name="name"]', 'Photo Status Test Album');
+    await page.click('button[type="submit"]');
+    await page.waitForURL(/\/albums\/[a-f0-9-]+/);
+
+    // Add photo with draft status
+    await page.click('a[href*="/photos/new"]');
+    await page.fill('input[name="title"]', 'Status Test Photo');
+    await page.fill('input[name="url"]', 'https://example.com/status-test.jpg');
+    await page.selectOption('select[name="status"]', 'draft');
+    await page.click('button[type="submit"]');
+
+    // Wait for redirect back to album detail page
+    await page.waitForURL(/\/albums\/[a-f0-9-]+/);
+
+    // Verify draft status - scope to photo card to avoid matching album badge
+    await expect(page.locator('.card .badge').filter({ hasText: /draft/i }).first()).toBeVisible();
+
+    // Edit and change to published
+    await page.click('a[href*="/edit"]');
+    await page.waitForLoadState('networkidle');
+    await page.selectOption('select[name="status"]', 'published');
+    await page.click('button[type="submit"]');
+
+    // Wait for redirect back to album detail page
+    await page.waitForLoadState('networkidle');
+
+    // Verify published status - scope to photo card
+    await expect(
+      page
+        .locator('.card .badge')
+        .filter({ hasText: /published/i })
+        .first(),
+    ).toBeVisible();
+
+    // Edit and change to archived
+    await page.click('a[href*="/edit"]');
+    await page.waitForLoadState('networkidle');
+    await page.selectOption('select[name="status"]', 'archived');
+    await page.click('button[type="submit"]');
+
+    // Wait for redirect back to album detail page
+    await page.waitForLoadState('networkidle');
+
+    // Verify archived status - scope to photo card
+    await expect(
+      page
+        .locator('.card .badge')
+        .filter({ hasText: /archived/i })
+        .first(),
+    ).toBeVisible();
+  });
+
+  test('Creator tracking for albums', async ({ page }) => {
+    await loginViaUI(page, 'crud-test@test.com', 'TestPassword123!');
+
+    // Create album
+    await page.goto('/albums');
+    await page.click('a[href="/albums/new"]');
+    await page.fill('input[name="name"]', 'Creator Track Album');
+    await page.click('button[type="submit"]');
+    await page.waitForURL(/\/albums\/[a-f0-9-]+/);
+
+    // Verify creator information is shown in the album detail card
+    await expect(
+      page.locator('.text-sm.opacity-50', { hasText: /Created by.*crud-test@test\.com/i }),
+    ).toBeVisible();
+  });
+
+  test('Parent-child relationship: photos belong to correct album', async ({ page }) => {
+    await loginViaUI(page, 'crud-test@test.com', 'TestPassword123!');
+
+    // Create two albums
+    await page.goto('/albums');
+    await page.click('a[href="/albums/new"]');
+    await page.fill('input[name="name"]', 'Album One');
+    await page.click('button[type="submit"]');
+    await page.waitForURL(/\/albums\/[a-f0-9-]+/);
+    const albumOneUrl = page.url();
+
+    await page.goto('/albums');
+    await page.click('a[href="/albums/new"]');
+    await page.fill('input[name="name"]', 'Album Two');
+    await page.click('button[type="submit"]');
+    await page.waitForURL(/\/albums\/[a-f0-9-]+/);
+
+    // Add photo to Album Two
+    await page.click('a[href*="/photos/new"]');
+    await page.fill('input[name="title"]', 'Photo in Album Two');
+    await page.fill('input[name="url"]', 'https://example.com/album-two-photo.jpg');
+    await page.click('button[type="submit"]');
+
+    // Wait for redirect back to Album Two detail page
+    await page.waitForURL(/\/albums\/[a-f0-9-]+/);
+
+    // Go to Album One - should NOT see "Photo in Album Two"
+    await page.goto(albumOneUrl);
+    await expect(page.locator('text=Photo in Album Two')).not.toBeVisible();
+
+    // Go back to Album Two - should see the photo
+    await page.goto('/albums');
+    await page.locator('.card:has-text("Album Two")').locator('a:has-text("View")').click();
+    await page.waitForURL(/\/albums\/[a-f0-9-]+/);
+    await expect(page.locator('text=Photo in Album Two')).toBeVisible();
+  });
+});

@@ -137,6 +137,15 @@ export class KeycloakAdminService {
     });
 
     if (!response.ok) {
+      // 409 Conflict means organization already exists - fetch and return it (idempotent)
+      if (response.status === 409) {
+        const existingOrg = await this.findOrganizationByName(name);
+        if (existingOrg) {
+          return existingOrg;
+        }
+        // If we can't find it, fall through to error
+      }
+
       const error = await response.text();
       throw new Error(`Failed to create organization: ${String(response.status)} ${error}`);
     }
@@ -252,6 +261,93 @@ export class KeycloakAdminService {
     }
 
     return (await response.json()) as KeycloakOrganization[];
+  }
+
+  /**
+   * Find organization by name
+   *
+   * @param name - Organization name to search for
+   * @returns Organization if found, null otherwise
+   */
+  async findOrganizationByName(name: string): Promise<KeycloakOrganization | null> {
+    const organizations = await this.listOrganizations();
+    return organizations.find((org) => org.name === name) ?? null;
+  }
+
+  /**
+   * Get organizations for a specific user
+   *
+   * @param userId - Keycloak user ID (sub claim / keycloakUserId)
+   * @returns Array of organization IDs the user belongs to
+   */
+  async getUserOrganizations(userId: string): Promise<string[]> {
+    const allOrgs = await this.listOrganizations();
+    const userOrgs: string[] = [];
+
+    // Check each organization to see if user is a member
+    for (const org of allOrgs) {
+      const isMember = await this.isUserInOrganization(org.id, userId);
+      if (isMember) {
+        userOrgs.push(org.id);
+      }
+    }
+
+    return userOrgs;
+  }
+
+  /**
+   * Check if a user is a member of an organization
+   *
+   * @param organizationId - Keycloak organization ID
+   * @param userId - Keycloak user ID (sub claim / keycloakUserId)
+   * @returns true if user is a member, false otherwise
+   */
+  async isUserInOrganization(organizationId: string, userId: string): Promise<boolean> {
+    const token = await this.ensureAuthenticated();
+
+    const response = await fetch(`${this.adminBaseUrl}/organizations/${organizationId}/members`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      // If we can't fetch members, assume user is not a member
+      return false;
+    }
+
+    const members = (await response.json()) as { id: string }[];
+    return members.some((member) => member.id === userId);
+  }
+
+  /**
+   * Add a user to an organization
+   *
+   * @param organizationId - Keycloak organization ID
+   * @param userId - Keycloak user ID (sub claim / keycloakUserId)
+   */
+  async addUserToOrganization(organizationId: string, userId: string): Promise<void> {
+    const token = await this.ensureAuthenticated();
+
+    const response = await fetch(`${this.adminBaseUrl}/organizations/${organizationId}/members`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(userId),
+    });
+
+    if (!response.ok) {
+      // 409 Conflict means user is already a member - treat as success (idempotent)
+      if (response.status === 409) {
+        return;
+      }
+
+      const error = await response.text();
+      throw new Error(`Failed to add user to organization: ${String(response.status)} ${error}`);
+    }
   }
 }
 

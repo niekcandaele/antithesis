@@ -7,6 +7,7 @@ declare module 'express-session' {
   interface SessionData {
     userId?: string;
     currentTenantId?: string;
+    lastUsedTenantId?: string;
     oauthState?: string;
     returnTo?: string;
   }

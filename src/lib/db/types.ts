@@ -12,6 +12,38 @@ export type Generated<T> =
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
+export interface Albums {
+  coverPhotoUrl: string | null;
+  createdAt: Generated<Timestamp>;
+  createdByUserId: string;
+  deletedAt: Timestamp | null;
+  deletedByUserId: string | null;
+  description: string | null;
+  id: Generated<string>;
+  isDeleted: Generated<boolean>;
+  name: string;
+  status: Generated<string>;
+  tenantId: string;
+  updatedAt: Generated<Timestamp>;
+}
+
+export interface Photos {
+  albumId: string;
+  createdAt: Generated<Timestamp>;
+  createdByUserId: string;
+  deletedAt: Timestamp | null;
+  deletedByUserId: string | null;
+  description: string | null;
+  id: Generated<string>;
+  isDeleted: Generated<boolean>;
+  status: Generated<string>;
+  tenantId: string;
+  thumbnailUrl: string | null;
+  title: string;
+  updatedAt: Generated<Timestamp>;
+  url: string;
+}
+
 export interface Roles {
   createdAt: Generated<Timestamp>;
   id: Generated<string>;
@@ -52,6 +84,8 @@ export interface UserTenants {
 }
 
 export interface DB {
+  albums: Albums;
+  photos: Photos;
   roles: Roles;
   tenants: Tenants;
   user_roles: UserRoles;
@@ -59,8 +93,5 @@ export interface DB {
   users: Users;
 }
 
-/**
- * Database schema type alias
- * Alias for DB interface to match common naming convention
- */
+// Backward compatibility alias
 export type Database = DB;

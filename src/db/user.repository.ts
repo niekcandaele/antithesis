@@ -106,24 +106,23 @@ export class UserRepository {
   /**
    * Upsert a user by Keycloak user ID
    * Creates a new user if not exists, updates if exists
+   * Uses database-level ON CONFLICT on email to handle test cleanup scenarios
+   * where Keycloak users are deleted and recreated with new IDs
    */
   async upsertByKeycloakId(data: CreateUserData): Promise<UserEntity> {
-    const existing = await this.findByKeycloakUserId(data.keycloakUserId);
-
-    if (existing) {
-      // Update existing user
-      const updated = await this.update(existing.id, {
-        email: data.email,
-        lastTenantId: data.lastTenantId,
-      });
-      if (!updated) {
-        throw new Error(`Failed to update user with keycloakUserId: ${data.keycloakUserId}`);
-      }
-      return updated;
-    } else {
-      // Create new user
-      return this.create(data);
-    }
+    const db = getDb();
+    return db
+      .insertInto('users')
+      .values(data)
+      .onConflict((oc) =>
+        oc.column('email').doUpdateSet({
+          keycloakUserId: data.keycloakUserId,
+          lastTenantId: data.lastTenantId,
+          updatedAt: new Date().toISOString(),
+        }),
+      )
+      .returningAll()
+      .executeTakeFirstOrThrow();
   }
 
   /**

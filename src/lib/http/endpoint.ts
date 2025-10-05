@@ -365,12 +365,57 @@ export const endpointToExpressHandler = (_endpoint: AnyEndpoint) => {
           // Import config dynamically to avoid circular dependencies
           const { config } = (await import('../config.js')) as { config: Record<string, unknown> };
 
+          // Fetch user tenants for tenant selector
+          const userTenants: { id: string; name: string; slug: string }[] = [];
+          const reqWithSession = req as {
+            session?: { userId?: string; currentTenantId?: string };
+            user?: { id: string };
+          };
+
+          if (reqWithSession.session?.userId && reqWithSession.user) {
+            try {
+              const { userTenantRepository } = (await import(
+                '../../db/user-tenant.repository.js'
+              )) as {
+                userTenantRepository: { findTenantsForUser: (userId: string) => Promise<string[]> };
+              };
+              const { tenantRepository } = (await import('../../db/tenant.repository.js')) as {
+                tenantRepository: {
+                  findById: (
+                    id: string,
+                  ) => Promise<{ id: string; name: string; slug: string } | undefined>;
+                };
+              };
+
+              const tenantIds = await userTenantRepository.findTenantsForUser(
+                reqWithSession.user.id,
+              );
+
+              for (const tenantId of tenantIds) {
+                const tenant = await tenantRepository.findById(tenantId);
+                if (tenant) {
+                  userTenants.push({
+                    id: tenant.id,
+                    name: tenant.name,
+                    slug: tenant.slug,
+                  });
+                }
+              }
+            } catch (error) {
+              // Silently fail - tenant selector just won't show
+              // eslint-disable-next-line no-console
+              console.error('Failed to fetch user tenants for view:', error);
+            }
+          }
+
           // Merge view data with global context
           const mergedContext = {
             route: req.path,
             config,
             flash: {}, // Placeholder for future flash message integration
             user: (req as { user?: unknown }).user ?? null,
+            userTenants,
+            currentTenantId: reqWithSession.session?.currentTenantId ?? null,
             ...viewData,
           };
 

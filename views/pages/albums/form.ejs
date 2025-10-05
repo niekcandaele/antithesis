@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> - Antithesis</title>
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+  <%- include('../../partials/header') %>
+
+  <main class="container mx-auto px-4 py-8">
+    <div class="max-w-2xl mx-auto space-y-6">
+      <!-- Breadcrumbs -->
+      <div class="text-sm breadcrumbs">
+        <ul>
+          <li><a href="/">Home</a></li>
+          <li><a href="/albums">Albums</a></li>
+          <% if (album) { %>
+            <li><a href="/albums/<%= album.id %>"><%= album.name %></a></li>
+            <li>Edit</li>
+          <% } else { %>
+            <li>New</li>
+          <% } %>
+        </ul>
+      </div>
+
+      <!-- Form Card -->
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+          <h1 class="text-3xl font-bold mb-6"><%= title %></h1>
+
+          <form method="POST" action="<%= album ? '/albums/' + album.id : '/albums' %>" class="space-y-4">
+            <!-- Name Field -->
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text">Album Name <span class="text-error">*</span></span>
+              </label>
+              <input
+                type="text"
+                name="name"
+                placeholder="Enter album name"
+                class="input input-bordered w-full"
+                value="<%= album ? album.name : '' %>"
+                required
+              />
+            </div>
+
+            <!-- Description Field -->
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text">Description</span>
+              </label>
+              <textarea
+                name="description"
+                placeholder="Enter album description"
+                class="textarea textarea-bordered h-24"
+              ><%= album && album.description ? album.description : '' %></textarea>
+            </div>
+
+            <!-- Cover Photo URL Field -->
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text">Cover Photo URL</span>
+              </label>
+              <input
+                type="url"
+                name="coverPhotoUrl"
+                placeholder="https://example.com/image.jpg"
+                class="input input-bordered w-full"
+                value="<%= album && album.coverPhotoUrl ? album.coverPhotoUrl : '' %>"
+              />
+              <label class="label">
+                <span class="label-text-alt">Optional: Provide a URL for the cover photo</span>
+              </label>
+            </div>
+
+            <!-- Status Field -->
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text">Status</span>
+              </label>
+              <select name="status" class="select select-bordered w-full">
+                <option value="draft" <%= album && album.status === 'draft' ? 'selected' : !album ? 'selected' : '' %>>Draft</option>
+                <option value="published" <%= album && album.status === 'published' ? 'selected' : '' %>>Published</option>
+                <option value="archived" <%= album && album.status === 'archived' ? 'selected' : '' %>>Archived</option>
+              </select>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="card-actions justify-end gap-2 mt-6">
+              <a href="<%= album ? '/albums/' + album.id : '/albums' %>" class="btn btn-ghost">Cancel</a>
+              <button type="submit" class="btn btn-primary">
+                <%= album ? 'Update Album' : 'Create Album' %>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <%- include('../../partials/footer') %>
+</body>
+</html>

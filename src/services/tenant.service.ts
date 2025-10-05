@@ -100,6 +100,64 @@ export class TenantService {
   }
 
   /**
+   * Find a tenant by Keycloak organization ID
+   * @returns Tenant if found, null otherwise
+   */
+  async findByKeycloakOrganizationId(keycloakOrganizationId: string): Promise<Tenant | null> {
+    const tenant = await tenantRepository.findByKeycloakOrganizationId(keycloakOrganizationId);
+    return tenant ? this.mapToPlain(tenant) : null;
+  }
+
+  /**
+   * Ensure a local tenant exists for a Keycloak organization
+   * Creates the tenant if it doesn't exist, returns existing tenant if it does
+   *
+   * @param keycloakOrgId - Keycloak organization ID
+   * @param orgName - Organization name (used when creating new tenant)
+   * @returns Tenant ID
+   */
+  async ensureTenantForOrganization(keycloakOrgId: string, orgName: string): Promise<string> {
+    // Check if tenant already exists
+    const existingTenant = await this.findByKeycloakOrganizationId(keycloakOrgId);
+
+    if (existingTenant) {
+      return existingTenant.id;
+    }
+
+    // Tenant doesn't exist - create it
+    // Generate slug from org name
+    const baseSlug = orgName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    const slug = `${baseSlug}-${Date.now().toString()}`;
+
+    const newTenant = await this.createTenantWithExistingOrg({
+      name: orgName,
+      slug,
+      keycloakOrganizationId: keycloakOrgId,
+    });
+
+    return newTenant.id;
+  }
+
+  /**
+   * Create a new tenant with an existing Keycloak organization
+   * @throws {ConflictError} If slug already exists
+   */
+  async createTenantWithExistingOrg(data: CreateTenantData): Promise<Tenant> {
+    // Check if slug already exists
+    const existingTenant = await tenantRepository.findBySlug(data.slug);
+    if (existingTenant) {
+      throw new ConflictError('Tenant with this slug already exists');
+    }
+
+    // Create local tenant with provided Keycloak organization ID
+    const created = await tenantRepository.create(data);
+    return this.mapToPlain(created);
+  }
+
+  /**
    * Create a new tenant
    * @throws {ConflictError} If slug already exists
    * @throws {Error} If Keycloak organization creation fails

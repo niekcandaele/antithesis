@@ -1,3 +1,5 @@
+You can test with the local account `test-user` / `Password1`
+
 HARDCORE RULES:
 
 - Dev environment runs in Docker. You NEVER run the app directly on your host machine, always use docker compose to start/stop the app, look at logs etc
@@ -8,3 +10,4 @@ HARDCORE RULES:
 - Whenever adding functionality, you should consider whether it makes sense to add/modify the config and allow controlling config via env vars
 - There is a rich ecosystem of library/helper type stuff available in this repo. Look to see if there's any existing helpers available before re-implementing things
 - You should work TDD-style whenever possible and appropriate
+- This app is horizontally scalable, stateless and follows all the 12 factors

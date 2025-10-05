@@ -108,16 +108,10 @@ export class AuthService {
         throw new Error('ID token missing email claim');
       }
 
-      // Fetch organization membership from UserInfo endpoint
-      const userInfo = await client.fetchUserInfo(
-        oidcConfig,
-        tokens.access_token,
-        idTokenClaims.sub,
-      );
-
-      // Extract organization IDs
-      // Keycloak Organizations may provide org IDs in various formats
-      const organizations = this.extractOrganizations(userInfo);
+      // Fetch organization membership using Keycloak Admin API
+      // UserInfo endpoint doesn't include organization data by default
+      const { keycloakAdminService } = await import('./keycloak-admin.service.js');
+      const organizations = await keycloakAdminService.getUserOrganizations(idTokenClaims.sub);
 
       return {
         keycloakUserId: idTokenClaims.sub,
@@ -131,37 +125,6 @@ export class AuthService {
           `Original error: ${errorMessage}`,
       );
     }
-  }
-
-  /**
-   * Extract organization IDs from UserInfo response
-   *
-   * Keycloak may return organizations in different formats:
-   * - organizations: string[]
-   * - organization_ids: string[]
-   * - groups with org prefix
-   */
-  private extractOrganizations(userInfo: client.UserInfoResponse): string[] {
-    const info = userInfo as Record<string, unknown>;
-
-    // Check for organizations array
-    if (Array.isArray(info.organizations)) {
-      return info.organizations as string[];
-    }
-
-    // Check for organization_ids array
-    if (Array.isArray(info.organization_ids)) {
-      return info.organization_ids as string[];
-    }
-
-    // Check for groups with org- prefix
-    if (Array.isArray(info.groups)) {
-      return (info.groups as string[])
-        .filter((g: string) => g.startsWith('org-'))
-        .map((g: string) => g.substring(4));
-    }
-
-    return [];
   }
 
   /**

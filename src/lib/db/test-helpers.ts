@@ -1,6 +1,7 @@
 import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { Kysely, PostgresDialect, sql } from 'kysely';
 import { Pool } from 'pg';
+import { setTenantId } from '../http/serverContext.js';
 import type { Database } from './types.js';
 
 /**
@@ -172,4 +173,27 @@ export async function setupQueryBuilderTestDatabase(): Promise<TestDatabase> {
  */
 export async function cleanTestDatabase(db: Kysely<Database>): Promise<void> {
   await db.deleteFrom('tenants').execute();
+}
+
+/**
+ * Mock tenant context for testing tenant-aware repositories
+ *
+ * Sets the tenantId in ServerContext for testing purposes.
+ * Use this in tests to simulate authenticated requests with tenant context.
+ *
+ * @param tenantId - The tenant ID to set in context
+ * @param fn - The function to execute with the tenant context
+ * @returns The result of the function
+ *
+ * @example
+ * ```typescript
+ * await withTenantContext('tenant-123', async () => {
+ *   const albums = await albumsRepository.findAll();
+ *   // albums will be scoped to tenant-123
+ * });
+ * ```
+ */
+export async function withTenantContext<T>(tenantId: string, fn: () => Promise<T>): Promise<T> {
+  setTenantId(tenantId);
+  return fn();
 }

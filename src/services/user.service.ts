@@ -1,7 +1,11 @@
 import { userRepository, type UserEntity } from '../db/user.repository.js';
 import { userTenantRepository } from '../db/user-tenant.repository.js';
-import { tenantRepository } from '../db/tenant.repository.js';
+import { tenantService } from './tenant.service.js';
+import { keycloakAdminService } from './keycloak-admin.service.js';
 import type { UserClaims } from './auth.service.js';
+import { logger } from '../lib/logger.js';
+
+const log = logger('userService');
 
 /**
  * User service for managing users and their tenant relationships
@@ -17,7 +21,7 @@ export class UserService {
    *
    * This method:
    * 1. Upserts the user by Keycloak user ID
-   * 2. Fetches tenant IDs based on Keycloak organization IDs
+   * 2. Ensures local tenants exist for all Keycloak organizations
    * 3. Synchronizes user-tenant relationships (adds new, removes obsolete)
    *
    * @param keycloakData - User claims from Keycloak (ID token + UserInfo)
@@ -30,36 +34,33 @@ export class UserService {
       keycloakUserId: keycloakData.keycloakUserId,
     });
 
-    // Find tenants by Keycloak organization IDs
-    const tenantIds = await this.findTenantsByOrganizationIds(keycloakData.organizations);
-
-    // Sync user-tenant relationships
-    await userTenantRepository.syncTenants(user.id, tenantIds);
-
-    return user;
-  }
-
-  /**
-   * Find tenant IDs by Keycloak organization IDs
-   *
-   * @param organizationIds - Array of Keycloak organization IDs
-   * @returns Array of tenant IDs
-   */
-  private async findTenantsByOrganizationIds(organizationIds: string[]): Promise<string[]> {
-    if (organizationIds.length === 0) {
-      return [];
-    }
-
+    // Ensure local tenants exist for all Keycloak organizations
     const tenantIds: string[] = [];
 
-    for (const orgId of organizationIds) {
-      const tenant = await tenantRepository.findByKeycloakOrganizationId(orgId);
-      if (tenant) {
-        tenantIds.push(tenant.id);
+    for (const orgId of keycloakData.organizations) {
+      try {
+        // Get organization details from Keycloak to fetch name
+        const org = await keycloakAdminService.getOrganization(orgId);
+
+        // Ensure local tenant exists (creates if missing)
+        const tenantId = await tenantService.ensureTenantForOrganization(orgId, org.name);
+
+        tenantIds.push(tenantId);
+      } catch (error) {
+        // Log warning but continue with other orgs
+        // This allows partial sync if one org fetch fails
+        log.warn('Failed to sync tenant for organization', {
+          userId: user.id,
+          orgId,
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
 
-    return tenantIds;
+    // Sync user-tenant relationships with ALL successfully fetched tenants
+    await userTenantRepository.syncTenants(user.id, tenantIds);
+
+    return user;
   }
 
   /**
