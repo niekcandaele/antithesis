@@ -23,11 +23,13 @@ export const photosController = controller('photos')
     get('/', 'listPhotos')
       .description('List all photos for the current tenant with pagination and filtering')
       .input(
-        z.object({
-          query: ListPhotosQuerySchema,
-        }),
+        z
+          .object({
+            query: ListPhotosQuerySchema,
+          })
+          .openapi('ListPhotosInput'),
       )
-      .response(zApiOutput(z.array(PhotoResponseSchema)))
+      .response(zApiOutput(z.array(PhotoResponseSchema).openapi('PhotoList')))
       .handler(async (inputs) => {
         const { page, limit, sortBy, sortDirection, search, albumId, status, includeDeleted } =
           inputs.query;
@@ -54,11 +56,15 @@ export const photosController = controller('photos')
     get('/:id', 'getPhoto')
       .description('Get a single photo for the current tenant')
       .input(
-        z.object({
-          params: z.object({
-            id: z.string().uuid('Invalid photo ID'),
-          }),
-        }),
+        z
+          .object({
+            params: z
+              .object({
+                id: z.string().uuid('Invalid photo ID'),
+              })
+              .openapi('GetPhotoParams'),
+          })
+          .openapi('GetPhotoInput'),
       )
       .response(zApiOutput(PhotoResponseSchema))
       .handler(async (inputs) => {
@@ -72,9 +78,11 @@ export const photosController = controller('photos')
     post('/', 'createPhoto')
       .description('Create a new photo for the current tenant')
       .input(
-        z.object({
-          body: CreatePhotoSchema,
-        }),
+        z
+          .object({
+            body: CreatePhotoSchema,
+          })
+          .openapi('CreatePhotoInput'),
       )
       .response(zApiOutput(PhotoResponseSchema))
       .handler(async (inputs, req) => {
@@ -93,12 +101,16 @@ export const photosController = controller('photos')
     put('/:id', 'updatePhoto')
       .description('Update a photo for the current tenant')
       .input(
-        z.object({
-          params: z.object({
-            id: z.string().uuid('Invalid photo ID'),
-          }),
-          body: UpdatePhotoSchema,
-        }),
+        z
+          .object({
+            params: z
+              .object({
+                id: z.string().uuid('Invalid photo ID'),
+              })
+              .openapi('UpdatePhotoParams'),
+            body: UpdatePhotoSchema,
+          })
+          .openapi('UpdatePhotoInput'),
       )
       .response(zApiOutput(PhotoResponseSchema))
       .handler(async (inputs) => {
@@ -112,17 +124,22 @@ export const photosController = controller('photos')
     del('/:id', 'deletePhoto')
       .description('Soft delete a photo for the current tenant')
       .input(
-        z.object({
-          params: z.object({
-            id: z.string().uuid('Invalid photo ID'),
-          }),
-        }),
+        z
+          .object({
+            params: z
+              .object({
+                id: z.string().uuid('Invalid photo ID'),
+              })
+              .openapi('DeletePhotoParams'),
+          })
+          .openapi('DeletePhotoInput'),
       )
-      .response(z.void())
+      .response(zApiOutput(z.object({}).openapi('DeletePhotoData')))
       .handler(async (inputs) => {
         // TODO: Get actual user ID from auth context
         const userId = 'system';
         await photosService.softDeletePhoto(inputs.params.id, userId);
+        return apiResponse({});
       }),
 
     /**
@@ -131,11 +148,15 @@ export const photosController = controller('photos')
     post('/:id/restore', 'restorePhoto')
       .description('Restore a soft-deleted photo for the current tenant')
       .input(
-        z.object({
-          params: z.object({
-            id: z.string().uuid('Invalid photo ID'),
-          }),
-        }),
+        z
+          .object({
+            params: z
+              .object({
+                id: z.string().uuid('Invalid photo ID'),
+              })
+              .openapi('RestorePhotoParams'),
+          })
+          .openapi('RestorePhotoInput'),
       )
       .response(zApiOutput(PhotoResponseSchema))
       .handler(async (inputs) => {
@@ -157,14 +178,18 @@ export const albumPhotosController = controller('albums/:albumId/photos')
     get('/', 'listAlbumPhotos')
       .description('Get all photos in a specific album for the current tenant')
       .input(
-        z.object({
-          params: z.object({
-            albumId: z.string().uuid('Invalid album ID'),
-          }),
-          query: ListPhotosQuerySchema,
-        }),
+        z
+          .object({
+            params: z
+              .object({
+                albumId: z.string().uuid('Invalid album ID'),
+              })
+              .openapi('ListAlbumPhotosParams'),
+            query: ListPhotosQuerySchema,
+          })
+          .openapi('ListAlbumPhotosInput'),
       )
-      .response(zApiOutput(z.array(PhotoResponseSchema)))
+      .response(zApiOutput(z.array(PhotoResponseSchema).openapi('AlbumPhotoList')))
       .handler(async (inputs) => {
         const { page, limit, sortBy, sortDirection, search, status, includeDeleted } = inputs.query;
 
@@ -189,12 +214,16 @@ export const albumPhotosController = controller('albums/:albumId/photos')
     post('/', 'createAlbumPhoto')
       .description('Create a new photo in a specific album for the current tenant')
       .input(
-        z.object({
-          params: z.object({
-            albumId: z.string().uuid('Invalid album ID'),
-          }),
-          body: CreatePhotoSchema,
-        }),
+        z
+          .object({
+            params: z
+              .object({
+                albumId: z.string().uuid('Invalid album ID'),
+              })
+              .openapi('CreateAlbumPhotoParams'),
+            body: CreatePhotoSchema,
+          })
+          .openapi('CreateAlbumPhotoInput'),
       )
       .response(zApiOutput(PhotoResponseSchema))
       .handler(async (inputs, req) => {

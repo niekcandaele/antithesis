@@ -257,16 +257,20 @@ export const authController = controller('/auth')
       .description('Switch current tenant for multi-tenant users')
       .input(
         z.object({
-          body: z.object({
-            tenantId: z.string().uuid('Invalid tenant ID'),
-          }),
+          body: z
+            .object({
+              tenantId: z.string().uuid('Invalid tenant ID'),
+            })
+            .openapi('SwitchTenantBody'),
         }),
       )
       .response(
         zApiOutput(
-          z.object({
-            currentTenantId: z.string(),
-          }),
+          z
+            .object({
+              currentTenantId: z.string(),
+            })
+            .openapi('SwitchTenantResponse'),
         ),
       )
       .handler(async (inputs, req) => {
@@ -321,16 +325,22 @@ export const authController = controller('/auth')
       .description('Get list of tenants for the authenticated user')
       .response(
         zApiOutput(
-          z.object({
-            tenants: z.array(
-              z.object({
-                id: z.string(),
-                name: z.string(),
-                slug: z.string(),
-              }),
-            ),
-            currentTenantId: z.string().nullable(),
-          }),
+          z
+            .object({
+              tenants: z
+                .array(
+                  z
+                    .object({
+                      id: z.string(),
+                      name: z.string(),
+                      slug: z.string(),
+                    })
+                    .openapi('TenantListItem'),
+                )
+                .openapi('UserTenantList'),
+              currentTenantId: z.string().nullable(),
+            })
+            .openapi('GetUserTenantsResponse'),
         ),
       )
       .handler(async (_inputs, req) => {

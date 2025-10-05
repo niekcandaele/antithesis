@@ -27,11 +27,13 @@ export const tenantController = controller('tenants')
     get('/', 'listTenants')
       .description('List all tenants with pagination and filtering')
       .input(
-        z.object({
-          query: ListTenantsQuerySchema,
-        }),
+        z
+          .object({
+            query: ListTenantsQuerySchema,
+          })
+          .openapi('ListTenantsInput'),
       )
-      .response(zApiOutput(z.array(TenantResponseSchema)))
+      .response(zApiOutput(z.array(TenantResponseSchema).openapi('TenantList')))
       .handler(async (inputs) => {
         const { page, limit, sortBy, sortDirection, search } = inputs.query;
 
@@ -52,11 +54,15 @@ export const tenantController = controller('tenants')
     get('/:id', 'getTenant')
       .description('Get a tenant by ID')
       .input(
-        z.object({
-          params: z.object({
-            id: z.string().uuid('Invalid tenant ID'),
-          }),
-        }),
+        z
+          .object({
+            params: z
+              .object({
+                id: z.string().uuid('Invalid tenant ID'),
+              })
+              .openapi('GetTenantParams'),
+          })
+          .openapi('GetTenantInput'),
       )
       .response(zApiOutput(TenantResponseSchema))
       .handler(async (inputs) => {
@@ -70,9 +76,11 @@ export const tenantController = controller('tenants')
     post('/', 'createTenant')
       .description('Create a new tenant')
       .input(
-        z.object({
-          body: CreateTenantSchema,
-        }),
+        z
+          .object({
+            body: CreateTenantSchema,
+          })
+          .openapi('CreateTenantInput'),
       )
       .response(zApiOutput(TenantResponseSchema))
       .handler(async (inputs) => {
@@ -86,12 +94,16 @@ export const tenantController = controller('tenants')
     put('/:id', 'updateTenant')
       .description('Update a tenant')
       .input(
-        z.object({
-          params: z.object({
-            id: z.string().uuid('Invalid tenant ID'),
-          }),
-          body: UpdateTenantSchema,
-        }),
+        z
+          .object({
+            params: z
+              .object({
+                id: z.string().uuid('Invalid tenant ID'),
+              })
+              .openapi('UpdateTenantParams'),
+            body: UpdateTenantSchema,
+          })
+          .openapi('UpdateTenantInput'),
       )
       .response(zApiOutput(TenantResponseSchema))
       .handler(async (inputs) => {
@@ -105,13 +117,17 @@ export const tenantController = controller('tenants')
     del('/:id', 'deleteTenant')
       .description('Delete a tenant')
       .input(
-        z.object({
-          params: z.object({
-            id: z.string().uuid('Invalid tenant ID'),
-          }),
-        }),
+        z
+          .object({
+            params: z
+              .object({
+                id: z.string().uuid('Invalid tenant ID'),
+              })
+              .openapi('DeleteTenantParams'),
+          })
+          .openapi('DeleteTenantInput'),
       )
-      .response(zApiOutput(z.object({ deleted: z.boolean() })))
+      .response(zApiOutput(z.object({ deleted: z.boolean() }).openapi('DeleteTenantResponse')))
       .handler(async (inputs) => {
         await tenantService.deleteTenant(inputs.params.id);
         return apiResponse({ deleted: true });

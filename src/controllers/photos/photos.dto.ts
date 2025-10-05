@@ -12,20 +12,22 @@ import { DTO } from '../../lib/DTO.js';
  * - thumbnailUrl: Optional URL string (empty strings converted to null)
  * - status: Enum (draft, published, archived)
  */
-export const CreatePhotoSchema = z.object({
-  albumId: z.string().uuid('Album ID must be a valid UUID'),
-  title: z.string().min(1, 'Title is required'),
-  description: z.preprocess(
-    (val) => (val === '' || !val ? null : val),
-    z.string().nullable().optional(),
-  ),
-  url: z.string().url('Must be a valid URL'),
-  thumbnailUrl: z.preprocess(
-    (val) => (val === '' || !val ? null : val),
-    z.string().url().nullable().optional(),
-  ),
-  status: z.enum(['draft', 'published', 'archived']).optional().default('draft'),
-});
+export const CreatePhotoSchema = z
+  .object({
+    albumId: z.string().uuid('Album ID must be a valid UUID'),
+    title: z.string().min(1, 'Title is required'),
+    description: z.preprocess(
+      (val) => (val === '' || !val ? null : val),
+      z.string().nullable().optional(),
+    ),
+    url: z.string().url('Must be a valid URL'),
+    thumbnailUrl: z.preprocess(
+      (val) => (val === '' || !val ? null : val),
+      z.string().url().nullable().optional(),
+    ),
+    status: z.enum(['draft', 'published', 'archived']).optional().default('draft'),
+  })
+  .openapi('CreatePhoto');
 
 /**
  * DTO for creating a photo
@@ -42,19 +44,21 @@ export class CreatePhotoDTO extends DTO<typeof CreatePhotoSchema> {
  * All fields are optional for partial updates (empty strings converted to null)
  * Note: albumId is intentionally excluded - photos shouldn't move between albums
  */
-export const UpdatePhotoSchema = z.object({
-  title: z.string().min(1, 'Title cannot be empty').optional(),
-  description: z.preprocess(
-    (val) => (val === '' || !val ? null : val),
-    z.string().nullable().optional(),
-  ),
-  url: z.string().url('Must be a valid URL').optional(),
-  thumbnailUrl: z.preprocess(
-    (val) => (val === '' || !val ? null : val),
-    z.string().url().nullable().optional(),
-  ),
-  status: z.enum(['draft', 'published', 'archived']).optional(),
-});
+export const UpdatePhotoSchema = z
+  .object({
+    title: z.string().min(1, 'Title cannot be empty').optional(),
+    description: z.preprocess(
+      (val) => (val === '' || !val ? null : val),
+      z.string().nullable().optional(),
+    ),
+    url: z.string().url('Must be a valid URL').optional(),
+    thumbnailUrl: z.preprocess(
+      (val) => (val === '' || !val ? null : val),
+      z.string().url().nullable().optional(),
+    ),
+    status: z.enum(['draft', 'published', 'archived']).optional(),
+  })
+  .openapi('UpdatePhoto');
 
 /**
  * DTO for updating a photo
@@ -68,22 +72,24 @@ export class UpdatePhotoDTO extends DTO<typeof UpdatePhotoSchema> {
 /**
  * Zod schema for photo response
  */
-export const PhotoResponseSchema = z.object({
-  id: z.string().uuid(),
-  tenantId: z.string().uuid(),
-  albumId: z.string().uuid(),
-  title: z.string(),
-  description: z.string().nullable(),
-  url: z.string(),
-  thumbnailUrl: z.string().nullable(),
-  status: z.string(),
-  createdByUserId: z.string().uuid(),
-  isDeleted: z.boolean(),
-  deletedAt: z.string().datetime().nullable(),
-  deletedByUserId: z.string().uuid().nullable(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
-});
+export const PhotoResponseSchema = z
+  .object({
+    id: z.string().uuid(),
+    tenantId: z.string().uuid(),
+    albumId: z.string().uuid(),
+    title: z.string(),
+    description: z.string().nullable(),
+    url: z.string(),
+    thumbnailUrl: z.string().nullable(),
+    status: z.string(),
+    createdByUserId: z.string().uuid(),
+    isDeleted: z.boolean(),
+    deletedAt: z.string().datetime().nullable(),
+    deletedByUserId: z.string().uuid().nullable(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .openapi('PhotoResponse');
 
 /**
  * DTO for photo response
@@ -97,16 +103,18 @@ export class PhotoResponseDTO extends DTO<typeof PhotoResponseSchema> {
 /**
  * Zod schema for list photos query parameters
  */
-export const ListPhotosQuerySchema = z.object({
-  page: z.coerce.number().int().positive().optional(),
-  limit: z.coerce.number().int().positive().max(100).optional(),
-  sortBy: z.enum(['title', 'createdAt', 'updatedAt', 'status']).optional(),
-  sortDirection: z.enum(['asc', 'desc']).optional(),
-  search: z.string().optional(),
-  albumId: z.string().uuid('Album ID must be a valid UUID').optional(),
-  status: z.enum(['draft', 'published', 'archived']).optional(),
-  includeDeleted: z.coerce.boolean().optional().default(false),
-});
+export const ListPhotosQuerySchema = z
+  .object({
+    page: z.coerce.number().int().positive().optional(),
+    limit: z.coerce.number().int().positive().max(100).optional(),
+    sortBy: z.enum(['title', 'createdAt', 'updatedAt', 'status']).optional(),
+    sortDirection: z.enum(['asc', 'desc']).optional(),
+    search: z.string().optional(),
+    albumId: z.string().uuid('Album ID must be a valid UUID').optional(),
+    status: z.enum(['draft', 'published', 'archived']).optional(),
+    includeDeleted: z.coerce.boolean().optional().default(false),
+  })
+  .openapi('ListPhotosQuery');
 
 /**
  * DTO for list photos query parameters

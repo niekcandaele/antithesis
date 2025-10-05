@@ -9,14 +9,16 @@ import { DTO } from '../../lib/DTO.js';
  * - slug: Lowercase alphanumeric with hyphens, no leading/trailing hyphens
  * - externalReferenceId: Optional string
  */
-export const CreateTenantSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  slug: z
-    .string()
-    .min(1, 'Slug is required')
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug must be lowercase alphanumeric with hyphens'),
-  externalReferenceId: z.string().optional().nullable(),
-});
+export const CreateTenantSchema = z
+  .object({
+    name: z.string().min(1, 'Name is required'),
+    slug: z
+      .string()
+      .min(1, 'Slug is required')
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug must be lowercase alphanumeric with hyphens'),
+    externalReferenceId: z.string().optional().nullable(),
+  })
+  .openapi('CreateTenant');
 
 /**
  * DTO for creating a tenant
@@ -36,15 +38,17 @@ export class CreateTenantDTO extends DTO<typeof CreateTenantSchema> {
  *
  * All fields are optional for partial updates
  */
-export const UpdateTenantSchema = z.object({
-  name: z.string().min(1, 'Name cannot be empty').optional(),
-  slug: z
-    .string()
-    .min(1, 'Slug cannot be empty')
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug must be lowercase alphanumeric with hyphens')
-    .optional(),
-  externalReferenceId: z.string().optional().nullable(),
-});
+export const UpdateTenantSchema = z
+  .object({
+    name: z.string().min(1, 'Name cannot be empty').optional(),
+    slug: z
+      .string()
+      .min(1, 'Slug cannot be empty')
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug must be lowercase alphanumeric with hyphens')
+      .optional(),
+    externalReferenceId: z.string().optional().nullable(),
+  })
+  .openapi('UpdateTenant');
 
 /**
  * DTO for updating a tenant
@@ -62,14 +66,16 @@ export class UpdateTenantDTO extends DTO<typeof UpdateTenantSchema> {
 /**
  * Zod schema for tenant response
  */
-export const TenantResponseSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string(),
-  slug: z.string(),
-  externalReferenceId: z.string().nullable(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
-});
+export const TenantResponseSchema = z
+  .object({
+    id: z.string().uuid(),
+    name: z.string(),
+    slug: z.string(),
+    externalReferenceId: z.string().nullable(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .openapi('TenantResponse');
 
 /**
  * DTO for tenant response
@@ -90,10 +96,12 @@ export class TenantResponseDTO extends DTO<typeof TenantResponseSchema> {
 /**
  * Zod schema for list tenants query parameters
  */
-export const ListTenantsQuerySchema = z.object({
-  page: z.coerce.number().int().positive().optional(),
-  limit: z.coerce.number().int().positive().max(100).optional(),
-  sortBy: z.enum(['name', 'slug', 'createdAt', 'updatedAt']).optional(),
-  sortDirection: z.enum(['asc', 'desc']).optional(),
-  search: z.string().optional(),
-});
+export const ListTenantsQuerySchema = z
+  .object({
+    page: z.coerce.number().int().positive().optional(),
+    limit: z.coerce.number().int().positive().max(100).optional(),
+    sortBy: z.enum(['name', 'slug', 'createdAt', 'updatedAt']).optional(),
+    sortDirection: z.enum(['asc', 'desc']).optional(),
+    search: z.string().optional(),
+  })
+  .openapi('ListTenantsQuery');

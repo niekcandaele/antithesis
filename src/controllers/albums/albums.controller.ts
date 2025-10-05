@@ -13,9 +13,23 @@ import { PhotoResponseSchema } from '../photos/photos.dto.js';
 /**
  * Extended album response with photos
  */
-const AlbumWithPhotosSchema = AlbumResponseSchema.extend({
-  photos: z.array(PhotoResponseSchema),
-});
+const AlbumWithPhotosSchema = z
+  .object({
+    id: z.string().uuid(),
+    tenantId: z.string().uuid(),
+    name: z.string(),
+    description: z.string().nullable(),
+    coverPhotoUrl: z.string().nullable(),
+    status: z.string(),
+    createdByUserId: z.string().uuid(),
+    isDeleted: z.boolean(),
+    deletedAt: z.string().datetime().nullable(),
+    deletedByUserId: z.string().uuid().nullable(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+    photos: z.array(PhotoResponseSchema).openapi('AlbumPhotoArray'),
+  })
+  .openapi('AlbumWithPhotos');
 
 /**
  * Albums controller
@@ -32,11 +46,13 @@ export const albumsController = controller('albums')
     get('/', 'listAlbums')
       .description('List all albums for the current tenant with pagination and filtering')
       .input(
-        z.object({
-          query: ListAlbumsQuerySchema,
-        }),
+        z
+          .object({
+            query: ListAlbumsQuerySchema,
+          })
+          .openapi('ListAlbumsInput'),
       )
-      .response(zApiOutput(z.array(AlbumResponseSchema)))
+      .response(zApiOutput(z.array(AlbumResponseSchema).openapi('AlbumList')))
       .handler(async (inputs) => {
         const { page, limit, sortBy, sortDirection, search, status, includeDeleted } = inputs.query;
 
@@ -61,11 +77,15 @@ export const albumsController = controller('albums')
     get('/:id', 'getAlbum')
       .description('Get a single album for the current tenant with photos')
       .input(
-        z.object({
-          params: z.object({
-            id: z.string().uuid('Invalid album ID'),
-          }),
-        }),
+        z
+          .object({
+            params: z
+              .object({
+                id: z.string().uuid('Invalid album ID'),
+              })
+              .openapi('GetAlbumParams'),
+          })
+          .openapi('GetAlbumInput'),
       )
       .response(zApiOutput(AlbumWithPhotosSchema))
       .handler(async (inputs) => {
@@ -84,9 +104,11 @@ export const albumsController = controller('albums')
     post('/', 'createAlbum')
       .description('Create a new album for the current tenant')
       .input(
-        z.object({
-          body: CreateAlbumSchema,
-        }),
+        z
+          .object({
+            body: CreateAlbumSchema,
+          })
+          .openapi('CreateAlbumInput'),
       )
       .response(zApiOutput(AlbumResponseSchema))
       .handler(async (inputs, req) => {
@@ -105,12 +127,16 @@ export const albumsController = controller('albums')
     put('/:id', 'updateAlbum')
       .description('Update an album for the current tenant')
       .input(
-        z.object({
-          params: z.object({
-            id: z.string().uuid('Invalid album ID'),
-          }),
-          body: UpdateAlbumSchema,
-        }),
+        z
+          .object({
+            params: z
+              .object({
+                id: z.string().uuid('Invalid album ID'),
+              })
+              .openapi('UpdateAlbumParams'),
+            body: UpdateAlbumSchema,
+          })
+          .openapi('UpdateAlbumInput'),
       )
       .response(zApiOutput(AlbumResponseSchema))
       .handler(async (inputs) => {
@@ -124,17 +150,22 @@ export const albumsController = controller('albums')
     del('/:id', 'deleteAlbum')
       .description('Soft delete an album for the current tenant')
       .input(
-        z.object({
-          params: z.object({
-            id: z.string().uuid('Invalid album ID'),
-          }),
-        }),
+        z
+          .object({
+            params: z
+              .object({
+                id: z.string().uuid('Invalid album ID'),
+              })
+              .openapi('DeleteAlbumParams'),
+          })
+          .openapi('DeleteAlbumInput'),
       )
-      .response(z.void())
+      .response(zApiOutput(z.object({}).openapi('DeleteAlbumData')))
       .handler(async (inputs) => {
         // TODO: Get actual user ID from auth context
         const userId = 'system';
         await albumsService.softDeleteAlbum(inputs.params.id, userId);
+        return apiResponse({});
       }),
 
     /**
@@ -143,11 +174,15 @@ export const albumsController = controller('albums')
     post('/:id/restore', 'restoreAlbum')
       .description('Restore a soft-deleted album for the current tenant')
       .input(
-        z.object({
-          params: z.object({
-            id: z.string().uuid('Invalid album ID'),
-          }),
-        }),
+        z
+          .object({
+            params: z
+              .object({
+                id: z.string().uuid('Invalid album ID'),
+              })
+              .openapi('RestoreAlbumParams'),
+          })
+          .openapi('RestoreAlbumInput'),
       )
       .response(zApiOutput(AlbumResponseSchema))
       .handler(async (inputs) => {
