@@ -2,6 +2,7 @@ import { type Application } from 'express';
 
 import { type AnyEndpoint, type Endpoint, endpointToExpressHandler } from './endpoint.js';
 import { Middleware, MiddlewareTypes } from './middleware.js';
+import { joinPaths } from './pathUtils.js';
 
 interface ControllerOptions {
   name?: string;
@@ -67,24 +68,6 @@ export const controller = (name: string) =>
     endpoints: [],
     middlewares: [],
   });
-
-/**
- * Join controller base path with endpoint path
- * Handles leading/trailing slashes correctly
- */
-function joinPaths(basePath: string, endpointPath: string): string {
-  // Root controller - no prefix
-  if (basePath === '/' || basePath === '') {
-    return endpointPath;
-  }
-
-  // Normalize paths - ensure leading slash
-  const base = basePath.startsWith('/') ? basePath : `/${basePath}`;
-  const endpoint = endpointPath.startsWith('/') ? endpointPath : `/${endpointPath}`;
-
-  // Join and remove double slashes
-  return `${base}${endpoint}`.replace(/\/+/g, '/');
-}
 
 export const bindControllerToApp = (_controller: Controller, app: Application) => {
   const controllerBeforeMiddlewares = _controller
