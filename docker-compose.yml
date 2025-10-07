@@ -3,14 +3,17 @@ services:
     image: postgres:17.4
     environment:
       POSTGRES_DB: antithesis
-      POSTGRES_USER: antithesis
+      POSTGRES_USER: postgres # Bootstrap superuser for migrations/admin
       POSTGRES_PASSWORD: antithesis
+      APP_DB_USER: antithesis_app # Non-superuser for application (RLS enforcement)
+      APP_DB_PASSWORD: antithesis
     ports:
       - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres-init.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U antithesis']
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -59,8 +62,10 @@ services:
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=antithesis
-      - DB_USER=antithesis
+      - DB_USER=antithesis_app # Application user (non-superuser)
       - DB_PASSWORD=antithesis
+      - DB_ADMIN_USER=postgres # Admin user for migrations
+      - DB_ADMIN_PASSWORD=antithesis
       - REDIS_HOST=redis
       - REDIS_PORT=6379
     stdin_open: true

@@ -106,23 +106,42 @@ export class UserRepository {
   /**
    * Upsert a user by Keycloak user ID
    * Creates a new user if not exists, updates if exists
-   * Uses database-level ON CONFLICT on email to handle test cleanup scenarios
-   * where Keycloak users are deleted and recreated with new IDs
+   *
+   * Uses explicit check-then-update/insert logic to handle both keycloakUserId and email constraints:
+   * 1. If keycloakUserId exists: UPDATE user data
+   * 2. If email exists with different keycloakUserId: ERROR (shouldn't happen in production)
+   * 3. Otherwise: INSERT new user
    */
   async upsertByKeycloakId(data: CreateUserData): Promise<UserEntity> {
     const db = getDb();
-    return db
-      .insertInto('users')
-      .values(data)
-      .onConflict((oc) =>
-        oc.column('email').doUpdateSet({
-          keycloakUserId: data.keycloakUserId,
+
+    // Check if user exists by keycloakUserId (canonical identifier)
+    const existingByKeycloak = await this.findByKeycloakUserId(data.keycloakUserId);
+    if (existingByKeycloak) {
+      // User exists - update with new data (email might have changed in Keycloak)
+      return db
+        .updateTable('users')
+        .set({
+          email: data.email,
           lastTenantId: data.lastTenantId,
           updatedAt: new Date().toISOString(),
-        }),
-      )
-      .returningAll()
-      .executeTakeFirstOrThrow();
+        })
+        .where('id', '=', existingByKeycloak.id)
+        .returningAll()
+        .executeTakeFirstOrThrow();
+    }
+
+    // Check if email is taken by different keycloakUserId (error state)
+    const existingByEmail = await this.findByEmail(data.email);
+    if (existingByEmail) {
+      throw new Error(
+        `Email ${data.email} already exists for different Keycloak user ID. ` +
+          `Existing: ${existingByEmail.keycloakUserId}, New: ${data.keycloakUserId}`,
+      );
+    }
+
+    // No conflicts - create new user
+    return db.insertInto('users').values(data).returningAll().executeTakeFirstOrThrow();
   }
 
   /**

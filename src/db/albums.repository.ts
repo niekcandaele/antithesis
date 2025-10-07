@@ -33,77 +33,62 @@ export type AlbumEntity = Selectable<Albums>;
 /**
  * Repository for album database operations with automatic tenant scoping
  *
- * All queries are automatically filtered by the current tenant from ServerContext.
- * Extends TenantAwareRepository for automatic tenant isolation.
+ * All queries are automatically filtered by Row Level Security (RLS) policies
+ * based on the current tenant from ServerContext. No manual tenant filtering needed!
+ *
+ * RLS automatically adds: WHERE tenant_id = current_tenant_id
  */
 export class AlbumsRepository extends TenantAwareRepository {
   /**
    * Find all albums for current tenant with optional filtering, searching, and pagination
+   *
+   * Note: Tenant filtering is automatic via RLS - no manual where clause needed
    */
   async findAll(params: QueryParams = {}): Promise<AlbumEntity[]> {
-    const tenantId = this.getTenantId();
     const db = getDb();
-    const query = db.selectFrom('albums').selectAll().where('tenantId', '=', tenantId);
+    const query = db.selectFrom('albums').selectAll();
     return buildQuery(query, params).execute();
   }
 
   /**
-   * Find an album by ID (tenant-scoped)
+   * Find an album by ID (automatically tenant-scoped via RLS)
    */
   async findById(id: string): Promise<AlbumEntity | undefined> {
-    const tenantId = this.getTenantId();
     const db = getDb();
-    return db
-      .selectFrom('albums')
-      .selectAll()
-      .where('tenantId', '=', tenantId)
-      .where('id', '=', id)
-      .executeTakeFirst();
+    return db.selectFrom('albums').selectAll().where('id', '=', id).executeTakeFirst();
   }
 
   /**
-   * Find an album by ID with creator user information (tenant-scoped)
+   * Find an album by ID with creator user information (automatically tenant-scoped via RLS)
    */
   async findByIdWithCreator(
     id: string,
   ): Promise<(AlbumEntity & { creatorEmail?: string | null }) | undefined> {
-    const tenantId = this.getTenantId();
     const db = getDb();
     return db
       .selectFrom('albums')
       .leftJoin('users', 'users.id', 'albums.createdByUserId')
       .selectAll('albums')
       .select('users.email as creatorEmail')
-      .where('albums.tenantId', '=', tenantId)
       .where('albums.id', '=', id)
       .executeTakeFirst();
   }
 
   /**
-   * Find albums by status for current tenant
+   * Find albums by status for current tenant (automatically tenant-scoped via RLS)
    */
   async findByStatus(status: string, params: QueryParams = {}): Promise<AlbumEntity[]> {
-    const tenantId = this.getTenantId();
     const db = getDb();
-    const query = db
-      .selectFrom('albums')
-      .selectAll()
-      .where('tenantId', '=', tenantId)
-      .where('status', '=', status);
+    const query = db.selectFrom('albums').selectAll().where('status', '=', status);
     return buildQuery(query, params).execute();
   }
 
   /**
-   * Find active (non-deleted) albums for current tenant
+   * Find active (non-deleted) albums for current tenant (automatically tenant-scoped via RLS)
    */
   async findActive(params: QueryParams = {}): Promise<AlbumEntity[]> {
-    const tenantId = this.getTenantId();
     const db = getDb();
-    const query = db
-      .selectFrom('albums')
-      .selectAll()
-      .where('tenantId', '=', tenantId)
-      .where('isDeleted', '=', false);
+    const query = db.selectFrom('albums').selectAll().where('isDeleted', '=', false);
     return buildQuery(query, params).execute();
   }
 
@@ -121,10 +106,9 @@ export class AlbumsRepository extends TenantAwareRepository {
   }
 
   /**
-   * Update an album by ID (verifies tenant ownership)
+   * Update an album by ID (automatically verifies tenant ownership via RLS)
    */
   async update(id: string, data: UpdateAlbumData): Promise<AlbumEntity | undefined> {
-    const tenantId = this.getTenantId();
     const db = getDb();
     return db
       .updateTable('albums')
@@ -132,17 +116,15 @@ export class AlbumsRepository extends TenantAwareRepository {
         ...data,
         updatedAt: new Date(),
       })
-      .where('tenantId', '=', tenantId)
       .where('id', '=', id)
       .returningAll()
       .executeTakeFirst();
   }
 
   /**
-   * Soft delete an album by ID (verifies tenant ownership)
+   * Soft delete an album by ID (automatically verifies tenant ownership via RLS)
    */
   async softDelete(id: string, deletedByUserId: string): Promise<AlbumEntity | undefined> {
-    const tenantId = this.getTenantId();
     const db = getDb();
     return db
       .updateTable('albums')
@@ -152,17 +134,15 @@ export class AlbumsRepository extends TenantAwareRepository {
         deletedByUserId,
         updatedAt: new Date(),
       })
-      .where('tenantId', '=', tenantId)
       .where('id', '=', id)
       .returningAll()
       .executeTakeFirst();
   }
 
   /**
-   * Restore a soft-deleted album by ID (verifies tenant ownership)
+   * Restore a soft-deleted album by ID (automatically verifies tenant ownership via RLS)
    */
   async restore(id: string): Promise<AlbumEntity | undefined> {
-    const tenantId = this.getTenantId();
     const db = getDb();
     return db
       .updateTable('albums')
@@ -172,37 +152,27 @@ export class AlbumsRepository extends TenantAwareRepository {
         deletedByUserId: null,
         updatedAt: new Date(),
       })
-      .where('tenantId', '=', tenantId)
       .where('id', '=', id)
       .returningAll()
       .executeTakeFirst();
   }
 
   /**
-   * Hard delete an album by ID (verifies tenant ownership)
+   * Hard delete an album by ID (automatically verifies tenant ownership via RLS)
    * Warning: This permanently deletes the album and cascades to photos
    */
   async delete(id: string): Promise<boolean> {
-    const tenantId = this.getTenantId();
     const db = getDb();
-    const result = await db
-      .deleteFrom('albums')
-      .where('tenantId', '=', tenantId)
-      .where('id', '=', id)
-      .executeTakeFirst();
+    const result = await db.deleteFrom('albums').where('id', '=', id).executeTakeFirst();
     return result.numDeletedRows > 0;
   }
 
   /**
-   * Count albums for current tenant
+   * Count albums for current tenant (automatically tenant-scoped via RLS)
    */
   async count(params: QueryParams = {}): Promise<number> {
-    const tenantId = this.getTenantId();
     const db = getDb();
-    let query = db
-      .selectFrom('albums')
-      .select(db.fn.count('id').as('count'))
-      .where('tenantId', '=', tenantId);
+    let query = db.selectFrom('albums').select(db.fn.count('id').as('count'));
 
     // Apply filters from params (excluding pagination)
     if (params.filters) {

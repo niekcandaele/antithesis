@@ -7,6 +7,7 @@ import { Oas } from './oas.js';
 export interface ServerContext {
   oas: Oas;
   tenantId?: string;
+  userId?: string;
 }
 
 class ServerContextManager {
@@ -23,21 +24,19 @@ class ServerContextManager {
     }
     return context;
   }
-
-  updateContext(updates: Partial<ServerContext>): void {
-    const context = this.getContext();
-    Object.assign(context, updates);
-  }
 }
 
-const contextManager = new ServerContextManager();
+// Export contextManager for creating nested contexts (e.g., adding tenantId)
+export const contextManager = new ServerContextManager();
 
 export const getServerContextMiddleware = (serverContext: ServerContext) =>
   middleware({
     name: 'ServerContext',
     type: MiddlewareTypes.BEFORE,
     handler(_req: Request, _res: Response, next: NextFunction) {
-      contextManager.runWithContext(serverContext, () => {
+      // Create a fresh context for each request to prevent context leakage
+      const requestContext = { ...serverContext };
+      contextManager.runWithContext(requestContext, () => {
         next();
       });
     },
@@ -45,8 +44,4 @@ export const getServerContextMiddleware = (serverContext: ServerContext) =>
 
 export const getServerContext = (): ServerContext => {
   return contextManager.getContext();
-};
-
-export const setTenantId = (tenantId: string): void => {
-  contextManager.updateContext({ tenantId });
 };

@@ -1,5 +1,6 @@
 import type { Selectable } from 'kysely';
 import { getDb } from '../lib/db/index.js';
+import { TenantAwareRepository } from '../lib/db/TenantAwareRepository.js';
 import type { UserRoles } from '../lib/db/types.js';
 
 /**
@@ -12,55 +13,64 @@ export type UserRoleEntity = Selectable<UserRoles>;
  *
  * Manages the many-to-many relationship between users and roles.
  * Roles are tenant-scoped, meaning a user can have different roles in different tenants.
+ *
+ * Uses Row Level Security (RLS) for automatic tenant filtering based on ServerContext.
+ * All operations are strictly tenant-scoped with no bypass mechanisms.
  */
-export class UserRoleRepository {
+export class UserRoleRepository extends TenantAwareRepository {
   /**
-   * Find all role IDs for a user in a specific tenant
+   * Find all role IDs for a user in the current tenant
+   *
+   * Note: Automatically filtered by current tenant via RLS
    */
-  async findRolesForUser(userId: string, tenantId: string): Promise<string[]> {
+  async findRolesForUser(userId: string): Promise<string[]> {
     const db = getDb();
     const results = await db
       .selectFrom('user_roles')
       .select('roleId')
       .where('userId', '=', userId)
-      .where('tenantId', '=', tenantId)
       .execute();
     return results.map((r) => r.roleId);
   }
 
   /**
-   * Find all user IDs with a specific role in a tenant
+   * Find all user IDs with a specific role in the current tenant
+   *
+   * Note: Automatically filtered by current tenant via RLS
    */
-  async findUsersWithRole(roleId: string, tenantId: string): Promise<string[]> {
+  async findUsersWithRole(roleId: string): Promise<string[]> {
     const db = getDb();
     const results = await db
       .selectFrom('user_roles')
       .select('userId')
       .where('roleId', '=', roleId)
-      .where('tenantId', '=', tenantId)
       .execute();
     return results.map((r) => r.userId);
   }
 
   /**
-   * Check if a user has a specific role in a tenant
+   * Check if a user has a specific role in the current tenant
+   *
+   * Note: Automatically filtered by current tenant via RLS
    */
-  async hasRole(userId: string, roleId: string, tenantId: string): Promise<boolean> {
+  async hasRole(userId: string, roleId: string): Promise<boolean> {
     const db = getDb();
     const result = await db
       .selectFrom('user_roles')
       .select('userId')
       .where('userId', '=', userId)
       .where('roleId', '=', roleId)
-      .where('tenantId', '=', tenantId)
       .executeTakeFirst();
     return !!result;
   }
 
   /**
-   * Assign a role to a user in a specific tenant
+   * Assign a role to a user in the current tenant
+   *
+   * Note: tenantId is auto-injected from ServerContext
    */
-  async assignRole(userId: string, roleId: string, tenantId: string): Promise<UserRoleEntity> {
+  async assignRole(userId: string, roleId: string): Promise<UserRoleEntity> {
+    const tenantId = this.getTenantId();
     const db = getDb();
     return db
       .insertInto('user_roles')
@@ -70,64 +80,30 @@ export class UserRoleRepository {
   }
 
   /**
-   * Remove a role from a user in a specific tenant
+   * Remove a role from a user in the current tenant
+   *
+   * Note: Automatically filtered by current tenant via RLS
    */
-  async removeRole(userId: string, roleId: string, tenantId: string): Promise<boolean> {
+  async removeRole(userId: string, roleId: string): Promise<boolean> {
     const db = getDb();
     const result = await db
       .deleteFrom('user_roles')
       .where('userId', '=', userId)
       .where('roleId', '=', roleId)
-      .where('tenantId', '=', tenantId)
       .executeTakeFirst();
     return result.numDeletedRows > 0;
   }
 
   /**
-   * Remove all roles for a user in a specific tenant
+   * Remove all roles for a user in the current tenant
+   *
+   * Note: Automatically filtered by current tenant via RLS
    */
-  async removeAllRolesForUser(userId: string, tenantId: string): Promise<number> {
+  async removeAllRolesForUser(userId: string): Promise<number> {
     const db = getDb();
     const result = await db
       .deleteFrom('user_roles')
       .where('userId', '=', userId)
-      .where('tenantId', '=', tenantId)
-      .executeTakeFirst();
-    return Number(result.numDeletedRows);
-  }
-
-  /**
-   * Remove all role assignments for a user (across all tenants)
-   */
-  async removeAllForUser(userId: string): Promise<number> {
-    const db = getDb();
-    const result = await db
-      .deleteFrom('user_roles')
-      .where('userId', '=', userId)
-      .executeTakeFirst();
-    return Number(result.numDeletedRows);
-  }
-
-  /**
-   * Remove all role assignments for a tenant
-   */
-  async removeAllForTenant(tenantId: string): Promise<number> {
-    const db = getDb();
-    const result = await db
-      .deleteFrom('user_roles')
-      .where('tenantId', '=', tenantId)
-      .executeTakeFirst();
-    return Number(result.numDeletedRows);
-  }
-
-  /**
-   * Remove all assignments of a specific role
-   */
-  async removeAllForRole(roleId: string): Promise<number> {
-    const db = getDb();
-    const result = await db
-      .deleteFrom('user_roles')
-      .where('roleId', '=', roleId)
       .executeTakeFirst();
     return Number(result.numDeletedRows);
   }

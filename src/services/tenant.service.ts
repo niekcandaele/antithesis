@@ -124,7 +124,7 @@ export class TenantService {
       return existingTenant.id;
     }
 
-    // Tenant doesn't exist - create it
+    // Tenant doesn't exist - try to create it
     // Generate slug from org name
     const baseSlug = orgName
       .toLowerCase()
@@ -132,13 +132,38 @@ export class TenantService {
       .replace(/^-+|-+$/g, '');
     const slug = `${baseSlug}-${Date.now().toString()}`;
 
-    const newTenant = await this.createTenantWithExistingOrg({
-      name: orgName,
-      slug,
-      keycloakOrganizationId: keycloakOrgId,
-    });
+    try {
+      const newTenant = await this.createTenantWithExistingOrg({
+        name: orgName,
+        slug,
+        keycloakOrganizationId: keycloakOrgId,
+      });
 
-    return newTenant.id;
+      return newTenant.id;
+    } catch (error) {
+      // Handle race condition: another request created tenant between check and insert
+      // PostgreSQL error has constraint name in different properties depending on driver
+      const errorStr = String(error);
+      const isDuplicateKeyError =
+        error instanceof Error &&
+        errorStr.includes('duplicate key') &&
+        (errorStr.includes('keycloak_organization_id') ||
+          errorStr.includes('tenants_keycloak_organization_id'));
+
+      if (isDuplicateKeyError) {
+        // Re-check for tenant (should now exist due to race condition)
+        const retryTenant = await this.findByKeycloakOrganizationId(keycloakOrgId);
+        if (retryTenant) {
+          log.info('Tenant race condition resolved - found existing tenant', {
+            keycloakOrgId,
+            tenantId: retryTenant.id,
+          });
+          return retryTenant.id;
+        }
+      }
+      // Re-throw if not a race condition error or retry failed
+      throw error;
+    }
   }
 
   /**

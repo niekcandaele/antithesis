@@ -11,3 +11,4 @@ HARDCORE RULES:
 - There is a rich ecosystem of library/helper type stuff available in this repo. Look to see if there's any existing helpers available before re-implementing things
 - You should work TDD-style whenever possible and appropriate
 - This app is horizontally scalable, stateless and follows all the 12 factors
+- You have access to several MCP servers. Use them a lot to verify your theories

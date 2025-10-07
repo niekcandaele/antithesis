@@ -67,16 +67,34 @@ const configSchema = z.object({
   DB_NAME: z.string().default('antithesis'),
 
   /**
-   * Database user
-   * @example 'antithesis'
+   * Database user (application runtime - non-superuser for RLS enforcement)
+   * @example 'antithesis_app'
    */
-  DB_USER: z.string().default('antithesis'),
+  DB_USER: z.string().default('antithesis_app'),
 
   /**
    * Database password
    * @example 'antithesis'
    */
   DB_PASSWORD: z.string().default('antithesis'),
+
+  /**
+   * Database admin user (MIGRATIONS ONLY - may be superuser)
+   * Used ONLY for running database migrations which require elevated privileges.
+   * The application runtime NEVER uses admin access - all operations are tenant-scoped via RLS.
+   * If not set, falls back to DB_USER.
+   * @example 'postgres'
+   */
+  DB_ADMIN_USER: z.string().optional(),
+
+  /**
+   * Database admin password (MIGRATIONS ONLY)
+   * Used ONLY for running database migrations.
+   * The application runtime NEVER uses admin access.
+   * If not set, falls back to DB_PASSWORD.
+   * @example 'antithesis'
+   */
+  DB_ADMIN_PASSWORD: z.string().optional(),
 
   /**
    * Database connection pool size

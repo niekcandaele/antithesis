@@ -56,14 +56,14 @@ export class UserTenantRepository {
 
   /**
    * Add a user-tenant relationship
+   *
+   * Note: Does not return the created entity to avoid triggering SELECT RLS policy
+   * during initial user sync. The INSERT policy allows creation without tenant context,
+   * but RETURNING would require the SELECT policy to pass, which needs tenant context.
    */
-  async addRelationship(userId: string, tenantId: string): Promise<UserTenantEntity> {
+  async addRelationship(userId: string, tenantId: string): Promise<void> {
     const db = getDb();
-    return db
-      .insertInto('user_tenants')
-      .values({ userId, tenantId })
-      .returningAll()
-      .executeTakeFirstOrThrow();
+    await db.insertInto('user_tenants').values({ userId, tenantId }).execute();
   }
 
   /**

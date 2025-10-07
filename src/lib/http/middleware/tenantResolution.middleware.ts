@@ -1,6 +1,6 @@
 import { type NextFunction, type Request, type Response } from 'express';
 import { middleware, MiddlewareTypes } from '../middleware.js';
-import { setTenantId } from '../serverContext.js';
+import { contextManager, getServerContext } from '../serverContext.js';
 import { userService } from '../../../services/user.service.js';
 import { tenantService } from '../../../services/tenant.service.js';
 import { userTenantRepository } from '../../../db/user-tenant.repository.js';
@@ -97,12 +97,18 @@ export const tenantResolution = middleware({
       }
     }
 
-    // Inject tenantId into context if found
-    if (tenantId) {
-      setTenantId(tenantId);
-    }
-    // If no tenantId found, context.tenantId remains undefined
+    // Inject tenantId and userId into context
+    // Create a nested immutable context instead of mutating
+    const currentContext = getServerContext();
+    const newContext = {
+      ...currentContext,
+      tenantId: tenantId ?? currentContext.tenantId,
+      userId: req.user?.id ?? currentContext.userId,
+    };
 
-    next();
+    // Always create new context to ensure userId is set even without tenantId
+    contextManager.runWithContext(newContext, () => {
+      next();
+    });
   },
 });

@@ -28,7 +28,7 @@ export class DatabaseTestHelper {
     try {
       // Truncate in order to handle foreign key constraints
       // CASCADE will also truncate dependent tables (user_tenants, user_roles)
-      await client.query('TRUNCATE albums, photos, tenants RESTART IDENTITY CASCADE;');
+      await client.query('TRUNCATE users, albums, photos, tenants RESTART IDENTITY CASCADE;');
     } finally {
       client.release();
     }
@@ -44,10 +44,13 @@ export class DatabaseTestHelper {
 
 /**
  * Create a database helper instance with default configuration
+ *
+ * Uses postgres superuser for test cleanup operations that require elevated privileges (TRUNCATE CASCADE).
+ * In production, the application uses the non-superuser antithesis_app account for RLS enforcement.
  */
 export function createDatabaseHelper(): DatabaseTestHelper {
   const connectionString =
-    process.env.DATABASE_URL || 'postgresql://antithesis:antithesis@localhost:5432/antithesis';
+    process.env.DATABASE_URL || 'postgresql://postgres:antithesis@localhost:5432/antithesis';
 
   return new DatabaseTestHelper({
     connectionString,

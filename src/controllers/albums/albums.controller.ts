@@ -10,6 +10,9 @@ import {
 } from './albums.dto.js';
 import { PhotoResponseSchema } from '../photos/photos.dto.js';
 
+// System user ID for operations without authenticated user context
+const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
+
 /**
  * Extended album response with photos
  */
@@ -162,8 +165,9 @@ export const albumsController = controller('albums')
       )
       .response(zApiOutput(z.object({}).openapi('DeleteAlbumData')))
       .handler(async (inputs) => {
-        // TODO: Get actual user ID from auth context
-        const userId = 'system';
+        // TODO: Extract userId from JWT token or session when auth is fully implemented
+        // For now, use SYSTEM_USER_ID - RLS still enforces tenant isolation on the DELETE
+        const userId = SYSTEM_USER_ID;
         await albumsService.softDeleteAlbum(inputs.params.id, userId);
         return apiResponse({});
       }),
