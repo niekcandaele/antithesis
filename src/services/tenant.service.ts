@@ -6,6 +6,9 @@ import {
 } from '../db/tenant.repository.js';
 import type { QueryParams } from '../lib/db/queryBuilder.js';
 import { keycloakAdminService } from './keycloak-admin.service.js';
+import { logger } from '../lib/logger.js';
+
+const log = logger('tenantService');
 
 /**
  * Plain tenant object returned by service
@@ -140,7 +143,7 @@ export class TenantService {
       });
 
       return newTenant.id;
-    } catch (error) {
+    } catch (error: unknown) {
       // Handle race condition: another request created tenant between check and insert
       // PostgreSQL error has constraint name in different properties depending on driver
       const errorStr = String(error);

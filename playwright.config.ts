@@ -14,7 +14,7 @@ export default defineConfig({
   reporter: 'html',
   timeout: 60000, // 60 second timeout per test
   use: {
-    baseURL: 'http://devbox:3000',
+    baseURL: process.env.TEST_APP_URL || 'http://devbox:3000',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
