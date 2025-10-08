@@ -1,9 +1,8 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
-# Enterprise configuration with comprehensive settings
 language: "en-US"
 tone_instructions: "Be thorough and focus on security and maintainability"
 reviews:
-  profile: "assertive"
+  profile: "chill"
   high_level_summary: true
   suggested_reviewers: true
   auto_assign_reviewers: true
@@ -56,11 +55,6 @@ pre_merge_checks:
     threshold: 80
 chat:
   auto_reply: true
-integrations:
-  jira:
-    usage: "enabled"
-  linear:
-    usage: "enabled"
 knowledge_base:
   code_guidelines:
     enabled: true
@@ -69,7 +63,3 @@ knowledge_base:
       - ".github/copilot-instructions.md"
       - "**/CLAUDE.md"
       - "**/CODING_STANDARDS.md"
-learnings:
-  scope: "global"
-issues:
-  scope: "global"
