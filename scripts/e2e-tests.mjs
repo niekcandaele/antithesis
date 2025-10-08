@@ -19,7 +19,7 @@
  */
 
 import { randomUUID } from 'crypto';
-import { upMany, logs, upAll, down, run, pullAll } from 'docker-compose/dist/v2.js';
+import { upMany, logs, upAll, down, run, pullAll } from 'docker-compose';
 import { $ } from 'zx';
 import { writeFile, mkdir } from 'fs/promises';
 
@@ -49,7 +49,6 @@ async function waitUntilHealthyHttp(url, maxRetries = 60) {
 const POSTGRES_PASSWORD = randomUUID();
 const KEYCLOAK_ADMIN_PASSWORD = randomUUID();
 const KEYCLOAK_CLIENT_SECRET = randomUUID();
-const KEYCLOAK_ADMIN_CLIENT_SECRET = randomUUID();
 const SESSION_SECRET = randomUUID();
 
 // Determine Docker tag and repository
@@ -67,9 +66,9 @@ process.env = {
   POSTGRES_USER: 'antithesis-test',
   POSTGRES_DB: 'antithesis-test-db',
   POSTGRES_PASSWORD,
+  KEYCLOAK_URL: 'http://127.0.0.1:8080',
   KEYCLOAK_ADMIN_PASSWORD,
   KEYCLOAK_CLIENT_SECRET,
-  KEYCLOAK_ADMIN_CLIENT_SECRET,
   SESSION_SECRET,
   DOCKER_TAG,
   GITHUB_REPOSITORY,
@@ -103,14 +102,14 @@ async function main() {
   await upMany(['keycloak'], composeOpts);
 
   console.log('⏳ Waiting for Keycloak to be ready...');
-  await waitUntilHealthyHttp('http://127.0.0.1:8080/health/ready', 60);
+  await waitUntilHealthyHttp('http://127.0.0.1:8080/realms/master', 60);
   console.log('✅ Keycloak is ready');
 
   // Wait additional time for Keycloak to fully initialize
   await sleep(3000);
 
   console.log('🔧 Initializing Keycloak (realm, clients, test users)...');
-  await $`bash ./infra/keycloak-init.sh`;
+  await $`KEYCLOAK_URL=http://127.0.0.1:8080 KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD} KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET} bash ./infra/keycloak-init.sh`;
 
   // If in CI, pull image; otherwise, build locally
   if (IS_CI && DOCKER_TAG !== 'local') {
@@ -143,8 +142,8 @@ async function main() {
     $.env.TEST_APP_URL = 'http://127.0.0.1:13000';
     $.env.KEYCLOAK_URL = 'http://127.0.0.1:8080';
     $.env.KEYCLOAK_REALM = 'antithesis';
-    $.env.KEYCLOAK_ADMIN_CLIENT_ID = 'antithesis-admin';
-    $.env.KEYCLOAK_ADMIN_CLIENT_SECRET = KEYCLOAK_ADMIN_CLIENT_SECRET;
+    $.env.KEYCLOAK_ADMIN_USER = 'admin';
+    $.env.KEYCLOAK_ADMIN_PASSWORD = KEYCLOAK_ADMIN_PASSWORD;
 
     await $`npm run test:e2e`;
 

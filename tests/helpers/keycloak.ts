@@ -1,19 +1,20 @@
 /**
  * Keycloak helper utilities for E2E tests
  *
- * Provides programmatic functions to manage test users and organizations:
+ * Provides programmatic functions to manage test users:
  * - Create/delete users
- * - Create/delete organizations
- * - Assign users to organizations
  * - Authenticate and get session cookies
  * - Cleanup test data
+ *
+ * Note: Organization management methods removed as part of OIDC-only simplification.
+ * Tenants are now auto-provisioned on first login via application database.
  */
 
 interface KeycloakConfig {
   url: string;
   realm: string;
-  adminClientId: string;
-  adminClientSecret: string;
+  adminUser: string;
+  adminPassword: string;
 }
 
 interface User {
@@ -21,12 +22,6 @@ interface User {
   username: string;
   email: string;
   enabled: boolean;
-}
-
-interface Organization {
-  id: string;
-  name: string;
-  alias: string;
 }
 
 interface TokenResponse {
@@ -42,7 +37,6 @@ export class KeycloakTestHelper {
   private readonly tokenUrl: string;
   private readonly adminBaseUrl: string;
   private readonly testUsers: string[] = [];
-  private readonly testOrgs: string[] = [];
 
   constructor(config: KeycloakConfig) {
     this.config = config;
@@ -51,16 +45,21 @@ export class KeycloakTestHelper {
   }
 
   /**
-   * Authenticate with Keycloak Admin API using client credentials
+   * Authenticate with Keycloak Admin API using admin user credentials
+   * Uses admin-cli client in master realm (built-in Keycloak client)
    */
   private async authenticate(): Promise<void> {
     const params = new URLSearchParams({
-      grant_type: 'client_credentials',
-      client_id: this.config.adminClientId,
-      client_secret: this.config.adminClientSecret,
+      grant_type: 'password',
+      client_id: 'admin-cli',
+      username: this.config.adminUser,
+      password: this.config.adminPassword,
     });
 
-    const response = await fetch(this.tokenUrl, {
+    // Use master realm for admin authentication
+    const masterTokenUrl = `${this.config.url}/realms/master/protocol/openid-connect/token`;
+
+    const response = await fetch(masterTokenUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: params.toString(),
@@ -182,141 +181,6 @@ export class KeycloakTestHelper {
   }
 
   /**
-   * Find an organization by name
-   *
-   * @param name - Organization name to search for
-   * @returns Organization ID if found, null otherwise
-   */
-  private async findOrganizationByName(name: string): Promise<string | null> {
-    const token = await this.getToken();
-
-    const response = await fetch(`${this.adminBaseUrl}/organizations`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const orgs = (await response.json()) as Organization[];
-    const found = orgs.find((org) => org.name === name);
-    return found ? found.id : null;
-  }
-
-  /**
-   * Create a test organization in Keycloak
-   * If organization already exists, delete and recreate for clean state
-   *
-   * @param name - Organization name
-   * @returns Organization object with id
-   */
-  async createOrganization(name: string): Promise<Organization> {
-    const token = await this.getToken();
-
-    // Check if organization already exists and delete if found
-    const existingOrgId = await this.findOrganizationByName(name);
-    if (existingOrgId) {
-      await this.deleteOrganization(existingOrgId);
-    }
-
-    const alias = name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
-
-    const orgData = {
-      name,
-      alias,
-      enabled: true,
-    };
-
-    const response = await fetch(`${this.adminBaseUrl}/organizations`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(orgData),
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to create organization: ${response.status} ${error}`);
-    }
-
-    const location = response.headers.get('Location');
-    if (!location) {
-      throw new Error('Organization created but no Location header returned');
-    }
-
-    const orgId = location.split('/').pop();
-    if (!orgId) {
-      throw new Error('Could not extract organization ID from Location header');
-    }
-
-    // Track for cleanup
-    this.testOrgs.push(orgId);
-
-    return {
-      id: orgId,
-      name,
-      alias,
-    };
-  }
-
-  /**
-   * Assign a user to an organization
-   *
-   * @param userId - Keycloak user ID
-   * @param organizationId - Keycloak organization ID
-   */
-  async assignUserToOrg(userId: string, organizationId: string): Promise<void> {
-    const token = await this.getToken();
-
-    const response = await fetch(`${this.adminBaseUrl}/organizations/${organizationId}/members`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(userId),
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to assign user to organization: ${response.status} ${error}`);
-    }
-  }
-
-  /**
-   * Remove a user from an organization
-   *
-   * @param userId - Keycloak user ID
-   * @param organizationId - Keycloak organization ID
-   */
-  async removeUserFromOrg(userId: string, organizationId: string): Promise<void> {
-    const token = await this.getToken();
-
-    const response = await fetch(
-      `${this.adminBaseUrl}/organizations/${organizationId}/members/${userId}`,
-      {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
-    );
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Failed to remove user from organization: ${response.status} ${error}`);
-    }
-  }
-
-  /**
    * Authenticate as a user and get session cookie
    *
    * @param email - User email
@@ -413,28 +277,7 @@ export class KeycloakTestHelper {
   }
 
   /**
-   * Delete an organization from Keycloak
-   *
-   * @param organizationId - Keycloak organization ID
-   */
-  async deleteOrganization(organizationId: string): Promise<void> {
-    const token = await this.getToken();
-
-    const response = await fetch(`${this.adminBaseUrl}/organizations/${organizationId}`, {
-      method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!response.ok && response.status !== 404) {
-      const error = await response.text();
-      throw new Error(`Failed to delete organization: ${response.status} ${error}`);
-    }
-  }
-
-  /**
-   * Cleanup all test users and organizations created during the test session
+   * Cleanup all test users created during the test session
    */
   async cleanup(): Promise<void> {
     // Delete users
@@ -446,18 +289,8 @@ export class KeycloakTestHelper {
       }
     }
 
-    // Delete organizations
-    for (const orgId of this.testOrgs) {
-      try {
-        await this.deleteOrganization(orgId);
-      } catch (error) {
-        console.error(`Failed to cleanup organization ${orgId}:`, error);
-      }
-    }
-
-    // Clear tracking arrays
+    // Clear tracking array
     this.testUsers.length = 0;
-    this.testOrgs.length = 0;
   }
 }
 
@@ -468,7 +301,7 @@ export function createKeycloakHelper(): KeycloakTestHelper {
   return new KeycloakTestHelper({
     url: process.env.KEYCLOAK_URL || 'https://sso.next.takaro.dev',
     realm: process.env.KEYCLOAK_REALM || 'takaro',
-    adminClientId: process.env.KEYCLOAK_ADMIN_CLIENT_ID || 'admin-cli',
-    adminClientSecret: process.env.KEYCLOAK_ADMIN_CLIENT_SECRET || '',
+    adminUser: process.env.KEYCLOAK_ADMIN_USER || 'admin',
+    adminPassword: process.env.KEYCLOAK_ADMIN_PASSWORD || '',
   });
 }

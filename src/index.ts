@@ -1,6 +1,5 @@
 import session from 'express-session';
-// @ts-expect-error - TypeScript has issues with this module's export but it works at runtime
-import { RedisStore } from 'connect-redis';
+import * as ConnectRedis from 'connect-redis';
 import { metaController } from './controllers/meta.js';
 import { healthController } from './controllers/health.js';
 import { tenantController } from './controllers/tenants/tenant.controller.js';
@@ -83,19 +82,15 @@ try {
 // Initialize session store
 const sessionRedisClient = await Redis.getClient('sessions');
 
-// @ts-expect-error - TypeScript incorrectly treats RedisStore as type-only but it works at runtime
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
-const redisStore = new RedisStore({
-  client: sessionRedisClient.raw,
-  prefix: 'session:',
-});
-
+const RedisStore = (ConnectRedis as any).RedisStore;
 const sessionMiddleware = middleware({
   name: 'session',
   type: MiddlewareTypes.BEFORE,
   handler: session({
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    store: redisStore,
+    store: new RedisStore({
+      client: sessionRedisClient.raw,
+      prefix: 'session:',
+    }),
     secret: config.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,

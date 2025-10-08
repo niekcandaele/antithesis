@@ -195,7 +195,6 @@ void describe('RLS Integration Tests via HTTP API', () => {
       .values({
         name: 'Test Tenant 1',
         slug: 'test-tenant-1',
-        keycloakOrganizationId: 'kc-org-test-1',
       })
       .returningAll()
       .executeTakeFirstOrThrow();
@@ -206,7 +205,6 @@ void describe('RLS Integration Tests via HTTP API', () => {
       .values({
         name: 'Test Tenant 2',
         slug: 'test-tenant-2',
-        keycloakOrganizationId: 'kc-org-test-2',
       })
       .returningAll()
       .executeTakeFirstOrThrow();

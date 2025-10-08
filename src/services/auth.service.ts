@@ -7,7 +7,6 @@ import { config } from '../lib/config.js';
 export interface UserClaims {
   keycloakUserId: string; // sub claim
   email: string;
-  organizations: string[]; // Organization IDs from UserInfo endpoint
 }
 
 /**
@@ -17,7 +16,6 @@ export interface UserClaims {
  * - OIDC endpoint discovery
  * - Authorization URL generation
  * - Token exchange
- * - UserInfo endpoint calls for organization membership
  */
 export class AuthService {
   private oidcConfig: client.Configuration | null = null;
@@ -108,15 +106,9 @@ export class AuthService {
         throw new Error('ID token missing email claim');
       }
 
-      // Fetch organization membership using Keycloak Admin API
-      // UserInfo endpoint doesn't include organization data by default
-      const { keycloakAdminService } = await import('./keycloak-admin.service.js');
-      const organizations = await keycloakAdminService.getUserOrganizations(idTokenClaims.sub);
-
       return {
         keycloakUserId: idTokenClaims.sub,
         email: idTokenClaims.email as string,
-        organizations,
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';

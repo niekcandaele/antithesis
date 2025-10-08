@@ -5,7 +5,6 @@ import { UnauthorizedError, ForbiddenError } from '../lib/http/errors.js';
 import { authService } from '../services/auth.service.js';
 import { userService } from '../services/user.service.js';
 import { tenantService } from '../services/tenant.service.js';
-import { keycloakAdminService } from '../services/keycloak-admin.service.js';
 import { userTenantRepository } from '../db/user-tenant.repository.js';
 import { config } from '../lib/config.js';
 import { logger } from '../lib/logger.js';
@@ -106,74 +105,36 @@ export const authController = controller('/auth')
         // Create session with user ID
         req.session.userId = user.id;
 
-        // Auto-provision tenant for users without any tenants
+        // Auto-provision personal tenant for users without any tenants
         const userTenantIds = await userTenantRepository.findTenantsForUser(user.id);
         if (userTenantIds.length === 0) {
-          log.info('Auto-provisioning tenant for user without organizations', {
+          log.info('Auto-provisioning personal tenant for user', {
             userId: user.id,
             email: user.email,
           });
 
-          const orgName = `${user.email}'s Organization`;
+          // Generate tenant name from email: john@example.com → john-personal
+          const username = user.email.split('@')[0];
+          const tenantName = `${username}-personal`;
+          const tenantSlug = `${username}-${String(Date.now())}`;
 
-          // Check if Keycloak organization already exists
-          const existingOrg = await keycloakAdminService.findOrganizationByName(orgName);
+          // Create tenant in database only (no Keycloak organization)
+          const newTenant = await tenantService.createTenant({
+            name: tenantName,
+            slug: tenantSlug,
+          });
 
-          let tenantId: string;
-          let keycloakOrgId: string;
-
-          if (existingOrg) {
-            // Organization exists in Keycloak - find or create local tenant
-            log.info('Found existing Keycloak organization, syncing to local tenant', {
-              userId: user.id,
-              keycloakOrgId: existingOrg.id,
-              orgName,
-            });
-
-            const existingTenant = await tenantService.findByKeycloakOrganizationId(existingOrg.id);
-
-            if (existingTenant) {
-              tenantId = existingTenant.id;
-              keycloakOrgId = existingOrg.id;
-            } else {
-              // Keycloak org exists but no local tenant - create local tenant
-              const newTenant = await tenantService.createTenantWithExistingOrg({
-                name: orgName,
-                slug: `${user.email.split('@')[0]}-${String(Date.now())}`,
-                keycloakOrganizationId: existingOrg.id,
-              });
-              tenantId = newTenant.id;
-              keycloakOrgId = existingOrg.id;
-            }
-          } else {
-            // No Keycloak organization - create both Keycloak org and local tenant
-            const newTenant = await tenantService.createTenant({
-              name: orgName,
-              slug: `${user.email.split('@')[0]}-${String(Date.now())}`,
-            });
-            tenantId = newTenant.id;
-            // createTenant always sets keycloakOrganizationId - guaranteed by createOrganization call
-            if (!newTenant.keycloakOrganizationId) {
-              throw new Error('Tenant created without Keycloak organization ID');
-            }
-            keycloakOrgId = newTenant.keycloakOrganizationId;
-          }
-
-          // Add user to Keycloak organization
-          await keycloakAdminService.addUserToOrganization(keycloakOrgId, user.keycloakUserId);
-
-          // Add local user-tenant relationship
-          await userTenantRepository.addRelationship(user.id, tenantId);
+          // Create user-tenant relationship
+          await userTenantRepository.addRelationship(user.id, newTenant.id);
 
           // Update user's last tenant
-          await userService.updateLastTenant(user.id, tenantId);
+          await userService.updateLastTenant(user.id, newTenant.id);
 
-          log.info('Auto-provisioned tenant for user', {
+          log.info('Auto-provisioned personal tenant for user', {
             userId: user.id,
             email: user.email,
-            tenantId,
-            keycloakOrgId,
-            orgName,
+            tenantId: newTenant.id,
+            tenantName,
           });
         }
 

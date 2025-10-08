@@ -10,12 +10,15 @@ import { createDatabaseHelper, type DatabaseTestHelper } from '../helpers/databa
  * - Status transitions (draft → published → archived)
  * - Creator tracking
  * - Parent-child relationship
+ *
+ * Note: With auto-provisioning, the test user gets a personal tenant
+ * automatically on first login (e.g., "crud-test-personal").
+ * No manual tenant/organization setup needed.
  */
 
 let keycloak: KeycloakTestHelper;
 let database: DatabaseTestHelper;
 let userId: string;
-let orgId: string;
 
 test.describe('Albums & Photos CRUD', () => {
   test.beforeAll(async () => {
@@ -25,16 +28,10 @@ test.describe('Albums & Photos CRUD', () => {
 
     keycloak = createKeycloakHelper();
 
-    // Create test user
+    // Create test user in Keycloak
+    // Personal tenant will be auto-provisioned on first login
     const user = await keycloak.createUser('crud-test@test.com', 'TestPassword123!');
     userId = user.id;
-
-    // Create organization
-    const org = await keycloak.createOrganization('CRUD Test Organization');
-    orgId = org.id;
-
-    // Assign user to organization
-    await keycloak.assignUserToOrg(userId, orgId);
   });
 
   test.afterAll(async () => {

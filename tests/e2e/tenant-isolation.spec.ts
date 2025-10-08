@@ -10,14 +10,16 @@ import { createDatabaseHelper, type DatabaseTestHelper } from '../helpers/databa
  * - User A cannot access User B's album by direct URL
  * - User A cannot add photos to User B's albums
  * - User A cannot access User B's photos
+ *
+ * Note: With auto-provisioning, each user gets their own personal tenant
+ * automatically on first login (e.g., "tenant-a-personal", "tenant-b-personal").
+ * No manual tenant/organization setup needed.
  */
 
 let keycloak: KeycloakTestHelper;
 let database: DatabaseTestHelper;
 let userAId: string;
 let userBId: string;
-let orgAId: string;
-let orgBId: string;
 
 test.describe('Tenant Isolation', () => {
   test.beforeAll(async () => {
@@ -27,21 +29,12 @@ test.describe('Tenant Isolation', () => {
 
     keycloak = createKeycloakHelper();
 
-    // Create two test users
+    // Create two test users in Keycloak
+    // Their personal tenants will be auto-provisioned on first login
     const userA = await keycloak.createUser('tenant-a@test.com', 'TestPassword123!');
     const userB = await keycloak.createUser('tenant-b@test.com', 'TestPassword123!');
     userAId = userA.id;
     userBId = userB.id;
-
-    // Create two organizations
-    const orgA = await keycloak.createOrganization('Tenant A Organization');
-    const orgB = await keycloak.createOrganization('Tenant B Organization');
-    orgAId = orgA.id;
-    orgBId = orgB.id;
-
-    // Assign users to their respective organizations
-    await keycloak.assignUserToOrg(userAId, orgAId);
-    await keycloak.assignUserToOrg(userBId, orgBId);
   });
 
   test.afterAll(async () => {

@@ -37,7 +37,6 @@ describe('Auth Controller Integration Tests', () => {
     const mockUserClaims = {
       keycloakUserId: 'keycloak-123',
       email: 'test@example.com',
-      organizations: ['org-1', 'org-2'],
     };
 
     const originalHandleCallback = authService.handleCallback;

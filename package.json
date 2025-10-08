@@ -17,7 +17,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "type-check": "tsc --noEmit",
-    "migrate": "tsx src/lib/db/migrate-cli.ts",
+    "migrate": "node -e \"require('fs').existsSync('dist') ? require('child_process').execSync('node dist/lib/db/migrate-cli.js', {stdio:'inherit'}) : require('child_process').execSync('tsx src/lib/db/migrate-cli.ts', {stdio:'inherit'})\"",
     "db:codegen": "kysely-codegen --dialect postgres --out-file src/lib/db/types.ts --url postgresql://${DB_USER:-antithesis}:${DB_PASSWORD:-antithesis}@${DB_HOST:-localhost}:${DB_PORT:-5432}/${DB_NAME:-antithesis}"
   },
   "keywords": [],

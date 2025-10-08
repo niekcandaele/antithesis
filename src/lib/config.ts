@@ -162,18 +162,6 @@ const configSchema = z.object({
   KEYCLOAK_CLIENT_SECRET: z.string().default('secret'),
 
   /**
-   * Keycloak Admin API client ID (service account)
-   * @example 'antithesis-admin'
-   */
-  KEYCLOAK_ADMIN_CLIENT_ID: z.string().default('antithesis-admin'),
-
-  /**
-   * Keycloak Admin API client secret
-   * @example 'admin-secret'
-   */
-  KEYCLOAK_ADMIN_CLIENT_SECRET: z.string().default('admin-secret'),
-
-  /**
    * Session secret for encryption
    * MUST be changed in production for security
    * @example 'random-secret-key'
@@ -219,10 +207,6 @@ function loadConfig(): Config {
 
     if (config.KEYCLOAK_CLIENT_SECRET === 'secret') {
       warnings.push('KEYCLOAK_CLIENT_SECRET is using default value in production');
-    }
-
-    if (config.KEYCLOAK_ADMIN_CLIENT_SECRET === 'admin-secret') {
-      warnings.push('KEYCLOAK_ADMIN_CLIENT_SECRET is using default value in production');
     }
 
     if (config.KEYCLOAK_URL === 'http://keycloak.local') {

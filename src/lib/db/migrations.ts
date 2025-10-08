@@ -1,6 +1,6 @@
 import * as path from 'node:path';
-import { promises as fs } from 'node:fs';
-import { Kysely, PostgresDialect } from 'kysely';
+import { promises as fs, existsSync } from 'node:fs';
+import { Kysely, PostgresDialect, sql } from 'kysely';
 import { Pool } from 'pg';
 import { FileMigrationProvider, Migrator } from 'kysely';
 import type { Database } from './types.js';
@@ -8,6 +8,24 @@ import { config } from '../config.js';
 import { logger } from '../logger.js';
 
 const log = logger('migrations');
+
+/**
+ * Get the migration folder path based on the environment
+ * - In development: uses TypeScript source files in src/db/migrations
+ * - In production: uses compiled JavaScript in dist/db/migrations
+ */
+function getMigrationFolder(): string {
+  const srcPath = path.join(process.cwd(), 'src/db/migrations');
+  const distPath = path.join(process.cwd(), 'dist/db/migrations');
+
+  // Check if we're running from compiled output (production)
+  // by checking if dist folder exists
+  if (existsSync(distPath)) {
+    return distPath;
+  }
+
+  return srcPath;
+}
 
 /**
  * Create a database connection for migrations using admin credentials
@@ -91,7 +109,7 @@ export async function runMigrations(): Promise<void> {
       provider: new FileMigrationProvider({
         fs,
         path,
-        migrationFolder: path.join(process.cwd(), 'src/db/migrations'),
+        migrationFolder: getMigrationFolder(),
       }),
     });
 
@@ -117,6 +135,14 @@ export async function runMigrations(): Promise<void> {
       }
 
       log.info('Migrations complete');
+
+      // Grant permissions to app user after migrations
+      if (config.DB_USER !== config.DB_ADMIN_USER) {
+        log.info(`Granting permissions to app user: ${config.DB_USER}`);
+        await sql`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${sql.ref(config.DB_USER)}`.execute(db);
+        await sql`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${sql.ref(config.DB_USER)}`.execute(db);
+        log.info('Permissions granted successfully');
+      }
     } else {
       log.info(
         'Skipping auto-migration in production. Run migrations manually via `npm run migrate`',
@@ -152,7 +178,7 @@ export async function runMigrationsManually(): Promise<void> {
       provider: new FileMigrationProvider({
         fs,
         path,
-        migrationFolder: path.join(process.cwd(), 'src/db/migrations'),
+        migrationFolder: getMigrationFolder(),
       }),
     });
 
@@ -175,6 +201,14 @@ export async function runMigrationsManually(): Promise<void> {
     }
 
     log.info('Migrations complete');
+
+    // Grant permissions to app user after migrations
+    if (config.DB_USER !== config.DB_ADMIN_USER) {
+      log.info(`Granting permissions to app user: ${config.DB_USER}`);
+      await sql`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${sql.ref(config.DB_USER)}`.execute(db);
+      await sql`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${sql.ref(config.DB_USER)}`.execute(db);
+      log.info('Permissions granted successfully');
+    }
   } finally {
     // Clean up admin connection
     await db.destroy();

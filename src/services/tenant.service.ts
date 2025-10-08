@@ -5,10 +5,6 @@ import {
   type UpdateTenantData,
 } from '../db/tenant.repository.js';
 import type { QueryParams } from '../lib/db/queryBuilder.js';
-import { keycloakAdminService } from './keycloak-admin.service.js';
-import { logger } from '../lib/logger.js';
-
-const log = logger('tenantService');
 
 /**
  * Plain tenant object returned by service
@@ -18,7 +14,6 @@ export interface Tenant {
   name: string;
   slug: string;
   externalReferenceId: string | null;
-  keycloakOrganizationId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -41,7 +36,6 @@ export class TenantService {
     name: unknown;
     slug: unknown;
     externalReferenceId: unknown;
-    keycloakOrganizationId: unknown;
     createdAt: unknown;
     updatedAt: unknown;
   }): Tenant {
@@ -54,11 +48,6 @@ export class TenantService {
           ? null
           : // eslint-disable-next-line @typescript-eslint/no-base-to-string
             String(entity.externalReferenceId),
-      keycloakOrganizationId:
-        entity.keycloakOrganizationId === null || entity.keycloakOrganizationId === undefined
-          ? null
-          : // eslint-disable-next-line @typescript-eslint/no-base-to-string
-            String(entity.keycloakOrganizationId),
       createdAt:
         entity.createdAt instanceof Date
           ? entity.createdAt.toISOString()
@@ -103,92 +92,8 @@ export class TenantService {
   }
 
   /**
-   * Find a tenant by Keycloak organization ID
-   * @returns Tenant if found, null otherwise
-   */
-  async findByKeycloakOrganizationId(keycloakOrganizationId: string): Promise<Tenant | null> {
-    const tenant = await tenantRepository.findByKeycloakOrganizationId(keycloakOrganizationId);
-    return tenant ? this.mapToPlain(tenant) : null;
-  }
-
-  /**
-   * Ensure a local tenant exists for a Keycloak organization
-   * Creates the tenant if it doesn't exist, returns existing tenant if it does
-   *
-   * @param keycloakOrgId - Keycloak organization ID
-   * @param orgName - Organization name (used when creating new tenant)
-   * @returns Tenant ID
-   */
-  async ensureTenantForOrganization(keycloakOrgId: string, orgName: string): Promise<string> {
-    // Check if tenant already exists
-    const existingTenant = await this.findByKeycloakOrganizationId(keycloakOrgId);
-
-    if (existingTenant) {
-      return existingTenant.id;
-    }
-
-    // Tenant doesn't exist - try to create it
-    // Generate slug from org name
-    const baseSlug = orgName
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-    const slug = `${baseSlug}-${Date.now().toString()}`;
-
-    try {
-      const newTenant = await this.createTenantWithExistingOrg({
-        name: orgName,
-        slug,
-        keycloakOrganizationId: keycloakOrgId,
-      });
-
-      return newTenant.id;
-    } catch (error: unknown) {
-      // Handle race condition: another request created tenant between check and insert
-      // PostgreSQL error has constraint name in different properties depending on driver
-      const errorStr = String(error);
-      const isDuplicateKeyError =
-        error instanceof Error &&
-        errorStr.includes('duplicate key') &&
-        (errorStr.includes('keycloak_organization_id') ||
-          errorStr.includes('tenants_keycloak_organization_id'));
-
-      if (isDuplicateKeyError) {
-        // Re-check for tenant (should now exist due to race condition)
-        const retryTenant = await this.findByKeycloakOrganizationId(keycloakOrgId);
-        if (retryTenant) {
-          log.info('Tenant race condition resolved - found existing tenant', {
-            keycloakOrgId,
-            tenantId: retryTenant.id,
-          });
-          return retryTenant.id;
-        }
-      }
-      // Re-throw if not a race condition error or retry failed
-      throw error;
-    }
-  }
-
-  /**
-   * Create a new tenant with an existing Keycloak organization
-   * @throws {ConflictError} If slug already exists
-   */
-  async createTenantWithExistingOrg(data: CreateTenantData): Promise<Tenant> {
-    // Check if slug already exists
-    const existingTenant = await tenantRepository.findBySlug(data.slug);
-    if (existingTenant) {
-      throw new ConflictError('Tenant with this slug already exists');
-    }
-
-    // Create local tenant with provided Keycloak organization ID
-    const created = await tenantRepository.create(data);
-    return this.mapToPlain(created);
-  }
-
-  /**
    * Create a new tenant
    * @throws {ConflictError} If slug already exists
-   * @throws {Error} If Keycloak organization creation fails
    */
   async createTenant(data: CreateTenantData): Promise<Tenant> {
     // Check if slug already exists
@@ -197,18 +102,8 @@ export class TenantService {
       throw new ConflictError('Tenant with this slug already exists');
     }
 
-    // Create Keycloak organization FIRST (fail-fast)
-    // If this fails, no local tenant is created
-    const keycloakOrg = await keycloakAdminService.createOrganization(data.name);
-
-    // Store organization ID in tenant data
-    const tenantData: CreateTenantData = {
-      ...data,
-      keycloakOrganizationId: keycloakOrg.id,
-    };
-
-    // Create local tenant with Keycloak organization ID
-    const created = await tenantRepository.create(tenantData);
+    // Create local tenant only (no Keycloak dependency)
+    const created = await tenantRepository.create(data);
     return this.mapToPlain(created);
   }
 
