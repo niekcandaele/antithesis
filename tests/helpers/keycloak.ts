@@ -299,8 +299,8 @@ export class KeycloakTestHelper {
  */
 export function createKeycloakHelper(): KeycloakTestHelper {
   return new KeycloakTestHelper({
-    url: process.env.KEYCLOAK_URL || 'https://sso.next.takaro.dev',
-    realm: process.env.KEYCLOAK_REALM || 'takaro',
+    url: process.env.KEYCLOAK_URL || 'http://127.0.0.1:8080',
+    realm: process.env.KEYCLOAK_REALM || 'antithesis',
     adminUser: process.env.KEYCLOAK_ADMIN_USER || 'admin',
     adminPassword: process.env.KEYCLOAK_ADMIN_PASSWORD || '',
   });
