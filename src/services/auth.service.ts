@@ -30,10 +30,18 @@ export class AuthService {
    */
   async initialize(): Promise<void> {
     try {
+      // allowInsecureRequests is intentionally used for development/testing with HTTP Keycloak
+      const discoveryOptions = config.KEYCLOAK_ALLOW_HTTP
+        ? // eslint-disable-next-line @typescript-eslint/no-deprecated
+          { execute: [client.allowInsecureRequests] }
+        : undefined;
+
       this.oidcConfig = await client.discovery(
         new URL(this.issuerUrl),
         config.KEYCLOAK_CLIENT_ID,
-        config.KEYCLOAK_CLIENT_SECRET,
+        undefined, // Client metadata (optional)
+        client.ClientSecretPost(config.KEYCLOAK_CLIENT_SECRET), // Client authentication
+        discoveryOptions, // Allow HTTP when configured
       );
     } catch (error) {
       const errorMessage =

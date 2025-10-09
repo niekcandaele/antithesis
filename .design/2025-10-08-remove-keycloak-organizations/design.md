@@ -7,6 +7,7 @@
 Modern authentication architecture emphasizes **clear separation of concerns** between authentication (verifying identity) and authorization (access control). The industry consensus strongly favors keeping these as distinct, loosely-coupled systems rather than tightly integrating them with external identity providers.
 
 **Key Sources Consulted**:
+
 - [Authentication and Authorization Best Practices](https://blog.gitguardian.com/authentication-and-authorization/) - GitGuardian 2024
 - [Best Practices for API Authentication and Authorization](https://www.permit.io/blog/best-practices-for-api-authentication-and-authorization) - Permit.io 2024
 - [Keycloak Securing Applications Guide](https://www.keycloak.org/docs/25.0.6/securing_apps/index.html) - Official Documentation
@@ -103,17 +104,20 @@ The application currently uses **Keycloak Organizations** to manage tenant-user 
 **What Exists:**
 
 **Authentication & Authorization Architecture** (`src/services/`):
+
 - **OIDC Authentication**: Standard OpenID Connect flow via `auth.service.ts:34-80` for user login
 - **Admin API Client**: Service account in `keycloak-admin.service.ts:40-354` for organization management
 - **Organization Sync**: `user.service.ts:30-64` syncs Keycloak org membership to `user_tenants` table on every login
 - **Auto-Provisioning**: `auth.controller.ts:109-178` creates Keycloak org + local tenant for users without organizations
 
 **Database Schema** (`src/db/migrations/`):
+
 - `002_add_keycloak_organization_to_tenants.ts`: Added `keycloakOrganizationId` column (nullable → required in migration 009)
 - `user_tenants` table: Many-to-many junction table for user-tenant access (already exists, used by RLS)
 - RLS Policies (`010_enable_rls.ts`, `011_add_rls_to_global_tables.ts`): Enforce tenant isolation using `user_tenants` table
 
 **Infrastructure** (`infra/keycloak-init.sh`):
+
 - Creates two Keycloak clients: OIDC client (authentication) + Admin client (service account)
 - Assigns `manage-users`, `view-users` roles to admin client service account
 - Requires `KC_FEATURES: organizations` enabled in Keycloak 25.0
@@ -121,6 +125,7 @@ The application currently uses **Keycloak Organizations** to manage tenant-user 
 **Pain Points:**
 
 1. **Performance Degradation**:
+
    ```typescript
    // src/services/auth.service.ts:113-114
    const organizations = await keycloakAdminService.getUserOrganizations(idTokenClaims.sub);
@@ -133,9 +138,11 @@ The application currently uses **Keycloak Organizations** to manage tenant-user 
      }
    }
    ```
+
    - This runs **on every login**, making n+1 API calls where n = total organizations
 
 2. **Cascade Failures**:
+
    ```typescript
    // src/services/tenant.service.ts:199-201
    const keycloakOrg = await keycloakAdminService.createOrganization(data.name);
@@ -143,6 +150,7 @@ The application currently uses **Keycloak Organizations** to manage tenant-user 
    ```
 
 3. **State Synchronization Complexity**:
+
    ```typescript
    // src/services/user.service.ts:40-61
    for (const orgId of keycloakData.organizations) {
@@ -152,6 +160,7 @@ The application currently uses **Keycloak Organizations** to manage tenant-user 
    }
    await userTenantRepository.syncTenants(user.id, tenantIds);
    ```
+
    - Keycloak organizations = source of truth
    - Local `user_tenants` table = synchronized copy
    - Risk of drift if sync fails partially
@@ -221,6 +230,7 @@ The application currently uses **Keycloak Organizations** to manage tenant-user 
 ### User Workflows
 
 #### 1. **New User Login (Auto-Provision Personal Tenant)**
+
 - User navigates to protected page → Redirected to `/auth/login`
 - Application redirects to Keycloak OIDC authorization endpoint
 - User authenticates with Keycloak credentials
@@ -235,6 +245,7 @@ The application currently uses **Keycloak Organizations** to manage tenant-user 
 - User sees dashboard for their personal tenant
 
 #### 2. **Existing User Login (With Tenant Assignment)**
+
 - User authenticates via OIDC (same as above)
 - Application creates/updates user record
 - **System queries `user_tenants` table → Finds assigned tenants**
@@ -242,12 +253,14 @@ The application currently uses **Keycloak Organizations** to manage tenant-user 
 - User sees dashboard for current tenant
 
 #### 3. **Tenant Creation (Admin Operation)**
+
 - Admin creates new tenant via Admin API: `POST /admin/tenants`
 - **System creates tenant record in database ONLY** (no Keycloak call)
 - Operation succeeds immediately
-- *(If Keycloak is down, operation still succeeds - no dependency)*
+- _(If Keycloak is down, operation still succeeds - no dependency)_
 
 #### 4. **User Switches Tenant** (Future: Multi-Tenant Users)
+
 - User with multiple tenants clicks tenant switcher
 - Frontend calls `PUT /auth/tenant` with new tenant ID
 - System validates user has access (checks `user_tenants` table)
@@ -257,6 +270,7 @@ The application currently uses **Keycloak Organizations** to manage tenant-user 
 ### External Interfaces
 
 **Keycloak OIDC Endpoints** (UNCHANGED):
+
 ```
 Authorization: GET {KEYCLOAK_URL}/realms/{REALM}/protocol/openid-connect/auth
 Token Exchange: POST {KEYCLOAK_URL}/realms/{REALM}/protocol/openid-connect/token
@@ -264,6 +278,7 @@ Logout: GET {KEYCLOAK_URL}/realms/{REALM}/protocol/openid-connect/logout
 ```
 
 **Keycloak Admin API Endpoints** (REMOVED):
+
 ```
 ❌ List Organizations: GET /admin/realms/{realm}/organizations
 ❌ Create Organization: POST /admin/realms/{realm}/organizations
@@ -272,6 +287,7 @@ Logout: GET {KEYCLOAK_URL}/realms/{REALM}/protocol/openid-connect/logout
 ```
 
 **Application Endpoints** (UNCHANGED):
+
 ```typescript
 // Existing tenant switching endpoint remains
 PUT /auth/tenant - Switch current tenant for multi-tenant users
@@ -280,6 +296,7 @@ PUT /auth/tenant - Switch current tenant for multi-tenant users
 **Note**: Admin user-tenant management endpoints NOT included in this scope. Future enhancement: Users will be able to invite others to their tenants.
 
 **Simplified Authentication Flow**:
+
 ```
 Before (With Organizations):
 1. User → OIDC Login → Keycloak
@@ -304,15 +321,16 @@ After (Simplified Auto-Provision):
 
 ### Alternatives Considered
 
-| Alternative | Pros | Cons | Why Not Chosen |
-|-------------|------|------|----------------|
-| **Keep Organizations, use custom token claims** | Avoids Admin API calls during login | Requires custom Keycloak mappers; still tight coupling; tenant creation still requires Admin API | Doesn't eliminate complexity or coupling; Organizations still unnecessary |
-| **Use Keycloak Groups instead of Organizations** | More mature feature; widely documented | Still requires Admin API; doesn't solve tight coupling; adds different complexity | Replaces one problem with another; authorization should be app-managed |
-| **Keep Organizations, make keycloakOrganizationId nullable** | Less breaking change; allows gradual migration | Doesn't remove complexity or Admin API dependency; code remains | Half-measure; doesn't achieve simplification goals |
-| **Move to different IdP (Auth0, Okta)** | Potentially better features | Migration effort; licensing costs; still risks similar coupling | Solves wrong problem; issue is architectural (using IdP for authZ), not vendor |
-| **Build custom authentication** | Full control | Security risk; reinventing wheel; high maintenance | Keycloak OIDC works well; problem is overuse, not the tool itself |
+| Alternative                                                  | Pros                                           | Cons                                                                                             | Why Not Chosen                                                                 |
+| ------------------------------------------------------------ | ---------------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| **Keep Organizations, use custom token claims**              | Avoids Admin API calls during login            | Requires custom Keycloak mappers; still tight coupling; tenant creation still requires Admin API | Doesn't eliminate complexity or coupling; Organizations still unnecessary      |
+| **Use Keycloak Groups instead of Organizations**             | More mature feature; widely documented         | Still requires Admin API; doesn't solve tight coupling; adds different complexity                | Replaces one problem with another; authorization should be app-managed         |
+| **Keep Organizations, make keycloakOrganizationId nullable** | Less breaking change; allows gradual migration | Doesn't remove complexity or Admin API dependency; code remains                                  | Half-measure; doesn't achieve simplification goals                             |
+| **Move to different IdP (Auth0, Okta)**                      | Potentially better features                    | Migration effort; licensing costs; still risks similar coupling                                  | Solves wrong problem; issue is architectural (using IdP for authZ), not vendor |
+| **Build custom authentication**                              | Full control                                   | Security risk; reinventing wheel; high maintenance                                               | Keycloak OIDC works well; problem is overuse, not the tool itself              |
 
 **Why Application-Managed Authorization Is Best**:
+
 - Industry best practice (see Microsoft, AWS guidance in Research section)
 - Already partially implemented (RLS, roles in database)
 - Eliminates external dependency for business logic
@@ -326,6 +344,7 @@ After (Simplified Auto-Provision):
 ### Architecture
 
 #### Current Architecture (With Organizations)
+
 ```
 ┌─────────────────────────────────────────┐
 │           Keycloak Realm                 │
@@ -365,6 +384,7 @@ Issues: Tight coupling, O(n) API calls, cascade failures
 ```
 
 #### Proposed Architecture (OIDC Only)
+
 ```
 ┌─────────────────────────────────────────┐
 │           Keycloak Realm                 │
@@ -404,23 +424,23 @@ Benefits: Loose coupling, 1 API call, resilient, simpler
 
 ### Code Change Analysis
 
-| Component | Action | Justification |
-|-----------|--------|---------------|
-| `src/services/keycloak-admin.service.ts` | **DELETE** (354 lines) | Entire Admin API integration removed; no longer needed without Organizations |
-| `src/services/keycloak-admin.service.test.ts` | **DELETE** (~200 lines) | Tests for deleted service |
-| `src/db/migrations/012_drop_keycloak_organization_id.ts` | **CREATE** | Drop `keycloakOrganizationId` column and unique index following zero-downtime pattern |
-| `src/services/auth.service.ts` | **MODIFY** | Remove lines 112-114 (Admin API call for orgs); remove `organizations` field from `UserClaims` interface |
-| `src/services/user.service.ts` | **SIMPLIFY** | Remove lines 37-61 (org sync loop); `syncUserFromKeycloak` only upserts user record |
-| `src/services/tenant.service.ts` | **REMOVE** | Delete `findByKeycloakOrganizationId`, `ensureTenantForOrganization`, `createTenantWithExistingOrg` methods; simplify `createTenant` (remove org creation) |
-| `src/controllers/auth.controller.ts` | **REMOVE** | Delete lines 109-178 (auto-provisioning logic); simplify callback to just user sync + tenant lookup |
-| `src/db/tenant.repository.ts` | **MODIFY** | Remove `keycloakOrganizationId` from `CreateTenantData`, `UpdateTenantData` interfaces; delete `findByKeycloakOrganizationId` method |
-| `src/lib/config.ts` | **REMOVE** | Delete `KEYCLOAK_ADMIN_CLIENT_ID` and `KEYCLOAK_ADMIN_CLIENT_SECRET` config fields (lines 164-174) |
-| `infra/keycloak-init.sh` | **SIMPLIFY** | Remove lines 98-156 (admin client creation and role assignment); update final output |
-| `docker-compose.test.yml` | **MODIFY** | Remove `KC_FEATURES: organizations` line; remove admin client env vars |
-| `tests/helpers/keycloak.ts` | **MARK DEPRECATED** | Keep file but mark org methods as deprecated; no longer used in app flow |
-| `tests/e2e/multi-org.spec.ts` | **DELETE or REWRITE** | Test Keycloak org sync - no longer relevant; could rewrite as multi-tenant test |
-| `src/integration/rls.integration.test.ts` | **MODIFY** | Remove `keycloakOrganizationId` from test tenant creation |
-| `src/services/tenant.service.test.ts` | **MODIFY** | Remove org-related test cases |
+| Component                                                | Action                  | Justification                                                                                                                                              |
+| -------------------------------------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/services/keycloak-admin.service.ts`                 | **DELETE** (354 lines)  | Entire Admin API integration removed; no longer needed without Organizations                                                                               |
+| `src/services/keycloak-admin.service.test.ts`            | **DELETE** (~200 lines) | Tests for deleted service                                                                                                                                  |
+| `src/db/migrations/012_drop_keycloak_organization_id.ts` | **CREATE**              | Drop `keycloakOrganizationId` column and unique index following zero-downtime pattern                                                                      |
+| `src/services/auth.service.ts`                           | **MODIFY**              | Remove lines 112-114 (Admin API call for orgs); remove `organizations` field from `UserClaims` interface                                                   |
+| `src/services/user.service.ts`                           | **SIMPLIFY**            | Remove lines 37-61 (org sync loop); `syncUserFromKeycloak` only upserts user record                                                                        |
+| `src/services/tenant.service.ts`                         | **REMOVE**              | Delete `findByKeycloakOrganizationId`, `ensureTenantForOrganization`, `createTenantWithExistingOrg` methods; simplify `createTenant` (remove org creation) |
+| `src/controllers/auth.controller.ts`                     | **REMOVE**              | Delete lines 109-178 (auto-provisioning logic); simplify callback to just user sync + tenant lookup                                                        |
+| `src/db/tenant.repository.ts`                            | **MODIFY**              | Remove `keycloakOrganizationId` from `CreateTenantData`, `UpdateTenantData` interfaces; delete `findByKeycloakOrganizationId` method                       |
+| `src/lib/config.ts`                                      | **REMOVE**              | Delete `KEYCLOAK_ADMIN_CLIENT_ID` and `KEYCLOAK_ADMIN_CLIENT_SECRET` config fields (lines 164-174)                                                         |
+| `infra/keycloak-init.sh`                                 | **SIMPLIFY**            | Remove lines 98-156 (admin client creation and role assignment); update final output                                                                       |
+| `docker-compose.test.yml`                                | **MODIFY**              | Remove `KC_FEATURES: organizations` line; remove admin client env vars                                                                                     |
+| `tests/helpers/keycloak.ts`                              | **MARK DEPRECATED**     | Keep file but mark org methods as deprecated; no longer used in app flow                                                                                   |
+| `tests/e2e/multi-org.spec.ts`                            | **DELETE or REWRITE**   | Test Keycloak org sync - no longer relevant; could rewrite as multi-tenant test                                                                            |
+| `src/integration/rls.integration.test.ts`                | **MODIFY**              | Remove `keycloakOrganizationId` from test tenant creation                                                                                                  |
+| `src/services/tenant.service.test.ts`                    | **MODIFY**              | Remove org-related test cases                                                                                                                              |
 
 ### Code to Remove
 
@@ -470,6 +490,7 @@ Benefits: Loose coupling, 1 API call, resilient, simpler
 Since this is a greenfield application with no production data, we can safely drop the column in a single release:
 
 **Migration 012** - `src/db/migrations/012_drop_keycloak_organization_id.ts`:
+
 ```
 up():
   1. DROP INDEX tenants_keycloak_organization_id_idx
@@ -481,6 +502,7 @@ down():
 ```
 
 **Why safe**:
+
 - No production data to protect (greenfield application)
 - RLS policies use `user_tenants` table, not `keycloakOrganizationId`
 - Migration and code deployed together
@@ -491,12 +513,14 @@ down():
 **Component: `src/services/auth.service.ts`**
 
 Current logic (lines 112-114):
+
 ```
 getUserOrganizations() → Admin API call
 Return UserClaims with organizations array
 ```
 
 New logic:
+
 ```
 Return UserClaims with only keycloakUserId and email
 No Admin API call
@@ -505,6 +529,7 @@ No Admin API call
 **Component: `src/services/user.service.ts`**
 
 Current `syncUserFromKeycloak`:
+
 ```
 1. Upsert user by Keycloak ID
 2. For each org in claims:
@@ -514,6 +539,7 @@ Current `syncUserFromKeycloak`:
 ```
 
 New `syncUserFromKeycloak`:
+
 ```
 1. Upsert user by Keycloak ID
 2. Return user
@@ -523,6 +549,7 @@ New `syncUserFromKeycloak`:
 **Component: `src/services/tenant.service.ts`**
 
 Current `createTenant`:
+
 ```
 1. Check slug uniqueness
 2. Create Keycloak organization (Admin API) ← FAILS if Keycloak down
@@ -530,6 +557,7 @@ Current `createTenant`:
 ```
 
 New `createTenant`:
+
 ```
 1. Check slug uniqueness
 2. Create local tenant
@@ -541,6 +569,7 @@ New `createTenant`:
 **Component: `src/controllers/auth.controller.ts` - Callback Handler**
 
 Current flow:
+
 ```
 1. Exchange code for tokens (OIDC)
 2. Sync user + org memberships (Admin API calls)
@@ -554,6 +583,7 @@ Current flow:
 ```
 
 New flow (Simplified Auto-Provision):
+
 ```
 1. Exchange code for tokens (OIDC)
 2. Sync user record (upsert from claims)
@@ -571,6 +601,7 @@ New flow (Simplified Auto-Provision):
 **Component: `src/lib/config.ts`**
 
 Remove:
+
 ```
 KEYCLOAK_ADMIN_CLIENT_ID: z.string()      ← DELETE
 KEYCLOAK_ADMIN_CLIENT_SECRET: z.string()  ← DELETE
@@ -585,6 +616,7 @@ Update to show only OIDC client credentials (remove admin client vars)
 **Component: `infra/keycloak-init.sh`**
 
 Remove admin client creation section (lines 98-156):
+
 - No admin client needed
 - No service account roles needed
 - No elevated privileges required
@@ -592,6 +624,7 @@ Remove admin client creation section (lines 98-156):
 **Component: `docker-compose.test.yml`**
 
 Remove:
+
 ```
 KC_FEATURES: organizations  ← Not needed anymore
 KEYCLOAK_ADMIN_CLIENT_ID    ← DELETE
@@ -609,16 +642,18 @@ KEYCLOAK_ADMIN_CLIENT_SECRET ← DELETE
 - `user_roles` table: UNCHANGED
 
 **Session Data** (UNCHANGED):
+
 ```typescript
 interface SessionData {
   userId: string;
   currentTenantId: string;
-  oauthState?: string;    // CSRF state
-  returnTo?: string;      // Post-login redirect
+  oauthState?: string; // CSRF state
+  returnTo?: string; // Post-login redirect
 }
 ```
 
 **Authentication Claims** (SIMPLIFIED):
+
 ```typescript
 // BEFORE:
 interface UserClaims {
@@ -637,22 +672,26 @@ interface UserClaims {
 ### Security
 
 **Authentication** (UNCHANGED):
+
 - OIDC standard flows (Authorization Code grant)
 - CSRF protection via state parameter
 - HttpOnly, Secure cookies in production
 - Session expiry (configurable)
 
 **Authorization** (ENHANCED):
+
 - Application-managed RBAC using `roles`, `user_roles` tables
 - New `requireRole` middleware for admin endpoints
 - RLS policies continue using `user_tenants` table
 - No change to existing RLS enforcement
 
 **Credential Management** (SIMPLIFIED):
+
 - **Before**: OIDC client secret + Admin client secret (2 secrets to rotate)
 - **After**: OIDC client secret only (1 secret)
 
 **Privilege Reduction**:
+
 - **Before**: Admin client needed `manage-users`, `view-users` realm-management roles
 - **After**: No elevated Keycloak privileges required
 
@@ -661,17 +700,20 @@ interface UserClaims {
 #### Unit Tests
 
 **New Tests**:
+
 - `user-tenants.controller.test.ts`: Admin endpoints for user-tenant management
 - Updated `auth.service.test.ts`: Remove org fetch mocks
 - Updated `user.service.test.ts`: Simplify sync tests (no org loop)
 - Updated `tenant.service.test.ts`: Remove org creation tests
 
 **Deleted Tests**:
+
 - `keycloak-admin.service.test.ts`: Service no longer exists
 
 #### Integration Tests
 
 **Modified Tests**:
+
 - `src/integration/auth.integration.test.ts`:
   - Remove org sync assertions
   - Test simplified login flow
@@ -682,10 +724,12 @@ interface UserClaims {
 #### E2E Tests
 
 **Deleted**:
+
 - `tests/e2e/multi-org.spec.ts`: Delete entirely (org sync no longer exists)
 - `tests/helpers/keycloak.ts`: Delete org-related methods (`createOrganization`, `assignUserToOrg`, `deleteOrganization`)
 
 **Simplified**:
+
 - All E2E tests: Just login → auto-provision happens automatically
 - No manual test data setup required (no `user_tenants` inserts needed)
 - Example:
@@ -702,10 +746,12 @@ interface UserClaims {
 #### Single-Release Deployment
 
 **Pre-Deployment**:
+
 1. Code review and approval
 2. All tests pass locally
 
 **Deployment**:
+
 1. Deploy code + migration 012 together
 2. Migration automatically:
    - Drops `keycloakOrganizationId` unique index
@@ -716,6 +762,7 @@ interface UserClaims {
    - Tenant creation works without Keycloak
 
 **Post-Deployment Cleanup** (Optional):
+
 1. Manually delete admin client from Keycloak console (not critical)
 2. Remove Organizations feature flag from Keycloak if desired
 
@@ -735,29 +782,29 @@ If critical issues arise:
 
 ### Lines of Code Removed
 
-| Component | Lines Removed |
-|-----------|---------------|
-| `keycloak-admin.service.ts` | 354 |
-| `keycloak-admin.service.test.ts` | ~200 |
-| Auth controller (auto-provision) | 70 |
-| User service (org sync) | 25 |
-| Tenant service (org methods) | 65 |
-| Auth service (org fetch) | 5 |
-| Test helper (org methods) | ~150 |
-| Setup script (admin client) | 58 |
-| Config (admin client vars) | 12 |
-| Test assertions (org-related) | ~50 |
-| **Total Removed** | **~989** |
+| Component                        | Lines Removed |
+| -------------------------------- | ------------- |
+| `keycloak-admin.service.ts`      | 354           |
+| `keycloak-admin.service.test.ts` | ~200          |
+| Auth controller (auto-provision) | 70            |
+| User service (org sync)          | 25            |
+| Tenant service (org methods)     | 65            |
+| Auth service (org fetch)         | 5             |
+| Test helper (org methods)        | ~150          |
+| Setup script (admin client)      | 58            |
+| Config (admin client vars)       | 12            |
+| Test assertions (org-related)    | ~50           |
+| **Total Removed**                | **~989**      |
 
 ### Performance Improvement
 
-| Metric | Before | After |
-|--------|--------|-------|
-| Login API calls | 1 (OIDC) + n+1 (Admin API) | 1 (OIDC) only |
+| Metric                       | Before                      | After                     |
+| ---------------------------- | --------------------------- | ------------------------- |
+| Login API calls              | 1 (OIDC) + n+1 (Admin API)  | 1 (OIDC) only             |
 | Tenant creation dependencies | Requires Keycloak available | Local DB only (resilient) |
-| Auto-provision complexity | Keycloak org + local tenant | Local tenant only |
+| Auto-provision complexity    | Keycloak org + local tenant | Local tenant only         |
 
-*Note: Detailed performance measurement out of scope for this change*
+_Note: Detailed performance measurement out of scope for this change_
 
 ### Operational Benefits
 
@@ -772,6 +819,7 @@ If critical issues arise:
 ## Risk Assessment
 
 ### Low Risk
+
 ✅ **Data Loss**: Greenfield application, no production data to protect
 ✅ **OIDC Authentication**: No changes to working OIDC flow
 ✅ **RLS Enforcement**: Already uses `user_tenants`, not Keycloak org ID
@@ -779,6 +827,7 @@ If critical issues arise:
 ✅ **Rollback**: Migration `down()` restores column if needed
 
 ### Mitigations
+
 - Thoroughly test auto-provision logic (tenant naming, user_tenants creation)
 - Verify RLS policies still work after column removal
 - Test login flow with new users (should get personal tenant)
@@ -791,31 +840,37 @@ If critical issues arise:
 Based on feedback, this design has been refined with the following key decisions:
 
 ### 1. **Auto-Provision Personal Tenants** ✅
+
 - Keep auto-provisioning but simplified (DB-only, no Keycloak org)
 - Generate tenant name: `{username}-personal` from user email
 - Eliminates need for admin UI to assign users
 
 ### 2. **Solo-Tenant Model** ✅
+
 - Each user gets their own personal tenant on first login
 - Multi-user tenants deferred to future "invite" feature
 - No admin user-tenant management needed in this scope
 
 ### 3. **Single-Release Deployment** ✅
+
 - Deploy code + migration together (greenfield application)
 - No phased rollout complexity needed
 - No production data migration concerns
 
 ### 4. **No Metrics/Monitoring** ✅
+
 - Keep implementation focused on functional changes
 - Performance measurement out of scope
 - No additional monitoring complexity
 
 ### 5. **Simplified Testing** ✅
+
 - Tests just login → auto-provision happens
 - Delete Keycloak org helper methods entirely
 - No manual test data setup required
 
 ### 6. **Documentation Minimal** ✅
+
 - Remove KC org mentions from existing docs
 - Document DB-only tenant system
 - No migration guides or communication plans needed

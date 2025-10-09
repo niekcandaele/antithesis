@@ -74,7 +74,9 @@ try {
   await authService.initialize();
   log.info('Keycloak OIDC client initialized');
 } catch (error) {
-  log.error('Failed to initialize Keycloak OIDC client', { error });
+  log.error('Failed to initialize Keycloak OIDC client', {
+    error: error instanceof Error ? { message: error.message, stack: error.stack } : error,
+  });
   log.warn('Authentication will not be available - check Keycloak configuration');
   // Don't throw - allow app to start even if Keycloak is unavailable
 }
@@ -82,11 +84,14 @@ try {
 // Initialize session store
 const sessionRedisClient = await Redis.getClient('sessions');
 
+// connect-redis v9 exports RedisStore as named export in namespace, but TypeScript types don't reflect this
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
 const RedisStore = (ConnectRedis as any).RedisStore;
 const sessionMiddleware = middleware({
   name: 'session',
   type: MiddlewareTypes.BEFORE,
   handler: session({
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
     store: new RedisStore({
       client: sessionRedisClient.raw,
       prefix: 'session:',

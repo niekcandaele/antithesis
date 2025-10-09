@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { config } from '../../src/lib/config.js';
 
 /**
  * OpenAPI Specification E2E Tests
@@ -9,9 +10,14 @@ import { test, expect } from '@playwright/test';
  * - Meta API (port 3002) should NOT have /openapi.json (only health checks)
  */
 
+// Get API URLs from config system
+const publicApiUrl = config.PUBLIC_API_URL;
+const adminApiUrl = config.ADMIN_API_URL;
+const metaApiUrl = config.META_API_URL;
+
 test.describe('OpenAPI Specification', () => {
   test('Public API: GET /openapi.json returns valid OpenAPI JSON', async ({ request }) => {
-    const response = await request.get('http://devbox:3000/openapi.json');
+    const response = await request.get(`${publicApiUrl}/openapi.json`);
 
     // Check status
     expect(response.status()).toBe(200);
@@ -32,7 +38,7 @@ test.describe('OpenAPI Specification', () => {
   });
 
   test('Admin API: GET /openapi.json returns valid OpenAPI JSON', async ({ request }) => {
-    const response = await request.get('http://devbox:3001/openapi.json');
+    const response = await request.get(`${adminApiUrl}/openapi.json`);
 
     // Check status
     expect(response.status()).toBe(200);
@@ -53,7 +59,7 @@ test.describe('OpenAPI Specification', () => {
   });
 
   test('Meta API: /openapi.json should not exist', async ({ request }) => {
-    const response = await request.get('http://devbox:3002/openapi.json');
+    const response = await request.get(`${metaApiUrl}/openapi.json`);
 
     // Meta API doesn't have metaController, so this should 404
     expect(response.status()).toBe(404);

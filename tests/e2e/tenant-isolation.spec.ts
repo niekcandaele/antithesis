@@ -49,7 +49,6 @@ test.describe('Tenant Isolation', () => {
    */
   async function loginViaUI(page: Page, email: string, password: string) {
     await page.goto('/auth/login');
-    await page.waitForURL(/sso\.next\.takaro\.dev/, { timeout: 30000 });
 
     // Step 1: Fill in username and click Sign In button
     await page.fill('input[name="username"]', email);
@@ -60,8 +59,8 @@ test.describe('Tenant Isolation', () => {
     await page.fill('input[name="password"]', password);
     await page.click('button:has-text("Sign In")');
 
-    // Wait for redirect back to app
-    await page.waitForURL(/devbox:3000/, { timeout: 30000 });
+    // Wait for redirect back to app (callback or final destination)
+    await page.waitForURL(/\/callback|\/albums|\/dashboard/, { timeout: 30000 });
   }
 
   test('User A creates album - visible to A only', async ({ page }) => {

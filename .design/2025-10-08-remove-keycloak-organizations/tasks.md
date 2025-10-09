@@ -1,9 +1,11 @@
 # Implementation Tasks: Remove Keycloak Organizations
 
 ## Overview
+
 Remove Keycloak Organizations feature and Admin API integration, simplifying authentication to OIDC-only. Move tenant-user relationship management entirely into application database with auto-provisioning of personal tenants. This removes ~1,000 lines of code and eliminates tight coupling to Keycloak Admin API.
 
 **Phases**: 5 phases
+
 - Phase 1: Database schema cleanup
 - Phase 2: Service layer simplification (remove Admin API)
 - Phase 3: Controller simplification (auto-provision personal tenants)
@@ -11,10 +13,12 @@ Remove Keycloak Organizations feature and Admin API integration, simplifying aut
 - Phase 5: Test cleanup & documentation
 
 ## Phase 1: Database Migration
+
 **Goal**: Remove keycloakOrganizationId column from tenants table
 **Demo**: "Migration runs successfully, column removed, existing user_tenants data preserved"
 
 ### Tasks
+
 - [ ] Task 1.1: Create migration to drop keycloakOrganizationId column
   - **Output**: New migration file `012_drop_keycloak_organization_id.ts`
   - **Files**: `src/db/migrations/012_drop_keycloak_organization_id.ts`
@@ -33,6 +37,7 @@ Remove Keycloak Organizations feature and Admin API integration, simplifying aut
     - `findByKeycloakOrganizationId()` method
 
 ### Phase 1 Checkpoint
+
 - [ ] Run lint: `npm run lint`
 - [ ] Run build: `npm run build`
 - [ ] Run tests: `npm test`
@@ -40,10 +45,12 @@ Remove Keycloak Organizations feature and Admin API integration, simplifying aut
 - [ ] **Demo ready**: Schema updated, code compiles with removed column
 
 ## Phase 2: Service Layer - Remove Admin API Integration
+
 **Goal**: Delete Keycloak Admin API service and remove all org-related logic from auth/user/tenant services
 **Demo**: "Login uses OIDC only, no Admin API calls, services simplified"
 
 ### Tasks
+
 - [ ] Task 2.1: Delete Keycloak Admin service files
   - **Output**: Remove Admin API integration entirely
   - **Files**:
@@ -80,6 +87,7 @@ Remove Keycloak Organizations feature and Admin API integration, simplifying aut
   - **Verify**: createTenant() works with Keycloak down
 
 ### Phase 2 Checkpoint
+
 - [ ] Run lint: `npm run lint`
 - [ ] Run build: `npm run build`
 - [ ] Run tests: `npm test` (expect some test failures - we'll fix in Phase 5)
@@ -87,10 +95,12 @@ Remove Keycloak Organizations feature and Admin API integration, simplifying aut
 - [ ] **Demo ready**: Services simplified, no Admin API dependency
 
 ## Phase 3: Controller - Auto-Provision Personal Tenants
+
 **Goal**: Implement simplified auto-provisioning that creates DB-only personal tenants
 **Demo**: "New user login creates {username}-personal tenant automatically"
 
 ### Tasks
+
 - [ ] Task 3.1: Simplify auth callback - remove Keycloak org creation
   - **Output**: Callback handler only handles OIDC flow + DB operations
   - **Files**: `src/controllers/auth.controller.ts`
@@ -119,6 +129,7 @@ Remove Keycloak Organizations feature and Admin API integration, simplifying aut
   - **Verify**: User redirects to dashboard with active tenant
 
 ### Phase 3 Checkpoint
+
 - [ ] Run lint: `npm run lint`
 - [ ] Run build: `npm run build`
 - [ ] Run tests: `npm test`
@@ -126,10 +137,12 @@ Remove Keycloak Organizations feature and Admin API integration, simplifying aut
 - [ ] **Demo ready**: Complete OIDC-only login flow with auto-provisioning
 
 ## Phase 4: Configuration & Infrastructure Cleanup
+
 **Goal**: Remove admin client configuration and simplify Keycloak setup
 **Demo**: "App runs with single OIDC client, no admin client needed"
 
 ### Tasks
+
 - [ ] Task 4.1: Remove admin client config from application
   - **Output**: Config schema without admin client fields
   - **Files**: `src/lib/config.ts`
@@ -165,6 +178,7 @@ Remove Keycloak Organizations feature and Admin API integration, simplifying aut
   - **Verify**: Test environment starts without Organizations feature
 
 ### Phase 4 Checkpoint
+
 - [ ] Run lint: `npm run lint`
 - [ ] Run build: `npm run build`
 - [ ] Run full stack: `docker compose up`
@@ -172,10 +186,12 @@ Remove Keycloak Organizations feature and Admin API integration, simplifying aut
 - [ ] **Demo ready**: Complete system runs with simplified config
 
 ## Phase 5: Test Cleanup & Documentation
+
 **Goal**: Remove obsolete tests, update remaining tests, document changes
 **Demo**: "All tests pass, no org-related test code remains"
 
 ### Tasks
+
 - [ ] Task 5.1: Delete obsolete E2E tests
   - **Output**: Remove org-specific E2E tests
   - **Files**:
@@ -224,6 +240,7 @@ Remove Keycloak Organizations feature and Admin API integration, simplifying aut
   - **Verify**: Setup instructions are accurate
 
 ### Phase 5 Checkpoint
+
 - [ ] Run lint: `npm run lint`
 - [ ] Run build: `npm run build`
 - [ ] Run tests: `npm test` (all tests pass)
@@ -235,6 +252,7 @@ Remove Keycloak Organizations feature and Admin API integration, simplifying aut
 - [ ] **Demo ready**: Complete feature with all tests passing
 
 ## Final Verification
+
 - [ ] All requirements from design doc met:
   - [ ] REQ-001: Keycloak used for authentication only ✓
   - [ ] REQ-004: No Admin API calls during login ✓

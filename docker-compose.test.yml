@@ -1,6 +1,8 @@
 services:
   postgres:
     image: postgres:17.4
+    ports:
+      - '15432:5432'
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -38,12 +40,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    healthcheck:
-      test: ['CMD-SHELL', 'exec 3<>/dev/tcp/127.0.0.1/8080 && echo -e "GET /health/ready HTTP/1.1\nhost: localhost:8080\n" >&3 && timeout 1 cat <&3 | grep -q "200"']
-      interval: 10s
-      timeout: 5s
-      retries: 30
-      start_period: 60s
 
   app:
     image: ghcr.io/${GITHUB_REPOSITORY}:${DOCKER_TAG}
@@ -66,7 +62,10 @@ services:
       KEYCLOAK_REALM: antithesis
       KEYCLOAK_CLIENT_ID: antithesis-app
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      KEYCLOAK_ALLOW_HTTP: ${KEYCLOAK_ALLOW_HTTP}
       PUBLIC_API_URL: http://127.0.0.1:13000
+      ADMIN_API_URL: http://127.0.0.1:13001
+      META_API_URL: http://127.0.0.1:13002
       SESSION_SECRET: ${SESSION_SECRET}
       LOG_LEVEL: debug
     ports:
@@ -77,8 +76,6 @@ services:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_healthy
-      keycloak:
         condition: service_healthy
     healthcheck:
       test: ['CMD-SHELL', 'wget -q --spider http://localhost:3002/healthz || exit 1']

@@ -162,6 +162,17 @@ const configSchema = z.object({
   KEYCLOAK_CLIENT_SECRET: z.string().default('secret'),
 
   /**
+   * Allow insecure HTTP communication with Keycloak (development/testing only)
+   * IMPORTANT: This should ONLY be enabled in development/test environments
+   * Always use HTTPS in production for security
+   * @default false
+   */
+  KEYCLOAK_ALLOW_HTTP: z
+    .string()
+    .transform((val) => val === 'true')
+    .default('false'),
+
+  /**
    * Session secret for encryption
    * MUST be changed in production for security
    * @example 'random-secret-key'
@@ -182,6 +193,18 @@ const configSchema = z.object({
    * @example 'http://localhost:3000'
    */
   PUBLIC_API_URL: z.string().url().default('http://localhost:3000'),
+
+  /**
+   * Admin API URL for internal admin operations
+   * @example 'http://localhost:3001' or 'https://admin.example.com'
+   */
+  ADMIN_API_URL: z.string().url().default('http://localhost:3001'),
+
+  /**
+   * Meta API URL for health/readiness checks
+   * @example 'http://localhost:3002' or 'https://meta.example.com'
+   */
+  META_API_URL: z.string().url().default('http://localhost:3002'),
 
   /**
    * Views directory path for EJS templates

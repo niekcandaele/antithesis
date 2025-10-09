@@ -69,6 +69,7 @@ process.env = {
   KEYCLOAK_URL: 'http://127.0.0.1:8080',
   KEYCLOAK_ADMIN_PASSWORD,
   KEYCLOAK_CLIENT_SECRET,
+  KEYCLOAK_ALLOW_HTTP: 'true',
   SESSION_SECRET,
   DOCKER_TAG,
   GITHUB_REPOSITORY,
@@ -128,7 +129,7 @@ async function main() {
 
   console.log('⏳ Waiting for application to be ready...');
   await Promise.all([
-    waitUntilHealthyHttp('http://127.0.0.1:13000', 60),
+    waitUntilHealthyHttp('http://127.0.0.1:13000/openapi.json', 60),
     waitUntilHealthyHttp('http://127.0.0.1:13002/healthz', 60),
   ]);
   console.log('✅ Application is ready');
@@ -138,14 +139,35 @@ async function main() {
   try {
     console.log('🎭 Running Playwright E2E tests...');
 
-    // Set environment variables for Playwright tests
-    $.env.TEST_APP_URL = 'http://127.0.0.1:13000';
-    $.env.KEYCLOAK_URL = 'http://127.0.0.1:8080';
-    $.env.KEYCLOAK_REALM = 'antithesis';
-    $.env.KEYCLOAK_ADMIN_USER = 'admin';
-    $.env.KEYCLOAK_ADMIN_PASSWORD = KEYCLOAK_ADMIN_PASSWORD;
+    // Build test environment configuration
+    // Pass env vars directly to child process so they're available before config loads
+    const testEnv = {
+      ...process.env,
+      // Keycloak configuration
+      KEYCLOAK_URL: 'http://127.0.0.1:8080',
+      KEYCLOAK_REALM: 'antithesis',
+      KEYCLOAK_ADMIN_USER: 'admin',
+      KEYCLOAK_ADMIN_PASSWORD: KEYCLOAK_ADMIN_PASSWORD,
+      KEYCLOAK_ALLOW_HTTP: 'true',
+      KEYCLOAK_CLIENT_ID: 'antithesis-app',
+      KEYCLOAK_CLIENT_SECRET: KEYCLOAK_CLIENT_SECRET,
+      SESSION_SECRET: SESSION_SECRET,
 
-    await $`npm run test:e2e`;
+      // Database configuration for host-based tests
+      DB_HOST: '127.0.0.1',
+      DB_PORT: '15432',
+      DB_NAME: process.env.POSTGRES_DB,
+      DB_USER: process.env.POSTGRES_USER,
+      DB_PASSWORD: POSTGRES_PASSWORD,
+
+      // API URLs for tests
+      PUBLIC_API_URL: 'http://127.0.0.1:13000',
+      ADMIN_API_URL: 'http://127.0.0.1:13001',
+      META_API_URL: 'http://127.0.0.1:13002',
+    };
+
+    // Run tests with proper environment
+    await $({ env: testEnv })`npm run test:e2e`;
 
     console.log('✅ E2E tests passed!');
   } catch (error) {

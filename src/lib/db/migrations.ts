@@ -139,8 +139,12 @@ export async function runMigrations(): Promise<void> {
       // Grant permissions to app user after migrations
       if (config.DB_USER !== config.DB_ADMIN_USER) {
         log.info(`Granting permissions to app user: ${config.DB_USER}`);
-        await sql`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${sql.ref(config.DB_USER)}`.execute(db);
-        await sql`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${sql.ref(config.DB_USER)}`.execute(db);
+        await sql`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${sql.ref(config.DB_USER)}`.execute(
+          db,
+        );
+        await sql`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${sql.ref(config.DB_USER)}`.execute(
+          db,
+        );
         log.info('Permissions granted successfully');
       }
     } else {
@@ -205,8 +209,12 @@ export async function runMigrationsManually(): Promise<void> {
     // Grant permissions to app user after migrations
     if (config.DB_USER !== config.DB_ADMIN_USER) {
       log.info(`Granting permissions to app user: ${config.DB_USER}`);
-      await sql`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${sql.ref(config.DB_USER)}`.execute(db);
-      await sql`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${sql.ref(config.DB_USER)}`.execute(db);
+      await sql`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${sql.ref(config.DB_USER)}`.execute(
+        db,
+      );
+      await sql`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${sql.ref(config.DB_USER)}`.execute(
+        db,
+      );
       log.info('Permissions granted successfully');
     }
   } finally {

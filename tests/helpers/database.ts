@@ -5,6 +5,7 @@
  */
 
 import { Pool } from 'pg';
+import { config } from '../../src/lib/config.js';
 
 interface DatabaseConfig {
   connectionString: string;
@@ -49,8 +50,8 @@ export class DatabaseTestHelper {
  * In production, the application uses the non-superuser antithesis_app account for RLS enforcement.
  */
 export function createDatabaseHelper(): DatabaseTestHelper {
-  const connectionString =
-    process.env.DATABASE_URL || 'postgresql://postgres:antithesis@localhost:5432/antithesis';
+  // Use the same config system as the application
+  const connectionString = `postgresql://${config.DB_USER}:${config.DB_PASSWORD}@${config.DB_HOST}:${config.DB_PORT}/${config.DB_NAME}`;
 
   return new DatabaseTestHelper({
     connectionString,
