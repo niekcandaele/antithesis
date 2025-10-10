@@ -10,7 +10,7 @@
     "build:css": "postcss src/styles/main.css -o public/css/main.css --verbose",
     "start": "node dist/index.js",
     "test": "npm run test:unit && npm run test:integration && npm run test:e2e",
-    "test:unit": "tsx --test 'src/**/*.test.ts' --test-name-pattern '^(?!.*integration)'",
+    "test:unit": "tsx --test 'src/**/!(*.integration).test.ts'",
     "test:integration": "tsx --test 'src/**/*.integration.test.ts'",
     "test:e2e": "playwright test",
     "test:watch": "tsx --test --watch 'src/**/*.test.ts'",
