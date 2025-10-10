@@ -11,6 +11,9 @@ RUN npm install
 # Copy source code (will be overridden by volume mount in development)
 COPY . .
 
+# Build CSS for development
+RUN npm run build:css
+
 # Expose port (adjust as needed)
 EXPOSE 3000
 
