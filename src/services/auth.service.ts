@@ -28,22 +28,76 @@ export class AuthService {
   }
 
   /**
+   * Custom fetch function to redirect public URLs to internal URLs
+   * and rewrite response bodies to use public URLs
+   * This allows the OIDC client to be initialized with the public issuer URL
+   * (which matches what Keycloak puts in JWT tokens) while actually making
+   * requests to the internal Docker URL
+   */
+  private customFetch: typeof fetch = async (
+    input: string | URL | Request,
+    init?: RequestInit,
+  ): Promise<Response> => {
+    // Convert input to URL for manipulation
+    const url =
+      typeof input === 'string'
+        ? new URL(input)
+        : input instanceof URL
+          ? input
+          : new URL(input.url);
+
+    // Replace public issuer URL with internal issuer URL for the request
+    const internalUrl = url.href.replace(this.publicIssuerUrl, this.issuerUrl);
+
+    // Make request to internal URL
+    const response = await fetch(internalUrl, init);
+
+    // If this is a JSON response (like discovery document), rewrite internal URLs to public URLs
+    const contentType = response.headers.get('content-type');
+    if (contentType?.includes('application/json')) {
+      const json = await response.json();
+      const jsonStr = JSON.stringify(json);
+      // Replace all occurrences of internal issuer with public issuer in the response
+      const modifiedJsonStr = jsonStr.replaceAll(this.issuerUrl, this.publicIssuerUrl);
+
+      // Create a new response with the modified body
+      return new Response(modifiedJsonStr, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+      });
+    }
+
+    return response;
+  };
+
+  /**
    * Initialize OIDC client by discovering Keycloak endpoints
    */
   async initialize(): Promise<void> {
     try {
-      // allowInsecureRequests is intentionally used for development/testing with HTTP Keycloak
-      const discoveryOptions = config.KEYCLOAK_ALLOW_HTTP
-        ? // eslint-disable-next-line @typescript-eslint/no-deprecated
-          { execute: [client.allowInsecureRequests] }
-        : undefined;
+      const discoveryOptions: {
+        execute?: ((configuration: client.Configuration) => void)[];
+        [client.customFetch]?: typeof fetch;
+      } = {};
 
+      // allowInsecureRequests is intentionally used for development/testing with HTTP Keycloak
+      if (config.KEYCLOAK_ALLOW_HTTP) {
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        discoveryOptions.execute = [client.allowInsecureRequests];
+      }
+
+      // Use custom fetch to redirect public URL requests to internal URL
+      discoveryOptions[client.customFetch] = this.customFetch;
+
+      // Initialize with PUBLIC issuer URL (matches JWT tokens from Keycloak)
+      // but use custom fetch to redirect requests to internal URL
       this.oidcConfig = await client.discovery(
-        new URL(this.issuerUrl),
+        new URL(this.publicIssuerUrl),
         config.KEYCLOAK_CLIENT_ID,
         undefined, // Client metadata (optional)
         client.ClientSecretPost(config.KEYCLOAK_CLIENT_SECRET), // Client authentication
-        discoveryOptions, // Allow HTTP when configured
+        discoveryOptions,
       );
     } catch (error) {
       const errorMessage =
@@ -84,11 +138,8 @@ export class AuthService {
       state,
     });
 
-    // Replace internal Keycloak URL with public one for browser redirect
-    // This allows Docker-internal URLs (http://keycloak:8080) to work for
-    // server-to-server communication while using browser-accessible URLs
-    // (http://127.0.0.1:8080) for OAuth redirects
-    return authUrl.href.replace(this.issuerUrl, this.publicIssuerUrl);
+    // Auth URL is already using public issuer URL (no replacement needed)
+    return authUrl.href;
   }
 
   /**
@@ -103,6 +154,7 @@ export class AuthService {
       const oidcConfig = await this.ensureInitialized();
 
       // Exchange authorization code for tokens
+      // OIDC client is initialized with public issuer URL, so no normalization needed
       const tokens = await client.authorizationCodeGrant(oidcConfig, new URL(callbackUrl), {
         expectedState: state,
         pkceCodeVerifier: undefined, // Not using PKCE for server-side flow

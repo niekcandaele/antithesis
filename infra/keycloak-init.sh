@@ -80,11 +80,15 @@ if [ "$CLIENT_EXISTS" = "0" ]; then
       \"serviceAccountsEnabled\": false,
       \"redirectUris\": [
         \"http://127.0.0.1:13000/auth/callback\",
-        \"http://localhost:13000/auth/callback\"
+        \"http://localhost:13000/auth/callback\",
+        \"http://127.0.0.1:3000/auth/callback\",
+        \"http://localhost:3000/auth/callback\"
       ],
       \"webOrigins\": [
         \"http://127.0.0.1:13000\",
-        \"http://localhost:13000\"
+        \"http://localhost:13000\",
+        \"http://127.0.0.1:3000\",
+        \"http://localhost:3000\"
       ],
       \"secret\": \"$KEYCLOAK_CLIENT_SECRET\"
     }"

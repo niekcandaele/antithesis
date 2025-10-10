@@ -30,6 +30,47 @@ services:
       timeout: 3s
       retries: 5
 
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    command: start-dev
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/antithesis
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: antithesis
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - '8080:8080'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'exec 3<>/dev/tcp/127.0.0.1/8080 && echo -e "GET /realms/master HTTP/1.1\r\nHost: localhost:8080\r\nConnection: close\r\n\r\n" >&3 && cat <&3 | head -1 | grep "HTTP/1.1"',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  keycloak-init:
+    image: alpine:3.21
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KEYCLOAK_CLIENT_SECRET: dev-secret-change-in-production
+    volumes:
+      - ./infra/keycloak-init.sh:/scripts/keycloak-init.sh:ro
+    command: >
+      sh -c "apk add --no-cache bash curl jq && bash /scripts/keycloak-init.sh"
+    restart: 'no'
+
   app:
     build:
       context: .
@@ -59,6 +100,9 @@ services:
       - PUBLIC_API_PORT=3000
       - ADMIN_API_PORT=3001
       - META_API_PORT=3002
+      - PUBLIC_API_URL=http://localhost:3000
+      - ADMIN_API_URL=http://localhost:3001
+      - META_API_URL=http://localhost:3002
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=antithesis
@@ -68,6 +112,13 @@ services:
       - DB_ADMIN_PASSWORD=antithesis
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - KEYCLOAK_URL=http://keycloak:8080
+      - KEYCLOAK_PUBLIC_URL=http://localhost:8080
+      - KEYCLOAK_REALM=antithesis
+      - KEYCLOAK_CLIENT_ID=antithesis-app
+      - KEYCLOAK_CLIENT_SECRET=dev-secret-change-in-production
+      - KEYCLOAK_ALLOW_HTTP=true
+      - SESSION_SECRET=dev-session-secret-change-in-production
     stdin_open: true
     tty: true
     depends_on:
@@ -75,6 +126,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      keycloak-init:
+        condition: service_completed_successfully
 
 volumes:
   postgres_data:
