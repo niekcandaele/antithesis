@@ -59,6 +59,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_PUBLIC_URL: http://127.0.0.1:8080
       KEYCLOAK_REALM: antithesis
       KEYCLOAK_CLIENT_ID: antithesis-app
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}

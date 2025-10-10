@@ -138,10 +138,23 @@ const configSchema = z.object({
     .default('true'),
 
   /**
-   * Keycloak server URL
-   * @example 'https://keycloak.example.com'
+   * Keycloak server URL (internal - for server-to-server communication)
+   * Used for OIDC discovery, token exchange, and other backend Keycloak API calls
+   * @example 'http://keycloak:8080' (Docker), 'https://keycloak.example.com' (production)
    */
   KEYCLOAK_URL: z.string().url().default('http://keycloak.local'),
+
+  /**
+   * Keycloak public URL (for browser redirects in OAuth flow)
+   * Falls back to KEYCLOAK_URL if not set (production: both are same public URL)
+   * In E2E/local: KEYCLOAK_URL=http://keycloak:8080, KEYCLOAK_PUBLIC_URL=http://127.0.0.1:8080
+   * @example 'http://127.0.0.1:8080' or 'https://keycloak.example.com'
+   */
+  KEYCLOAK_PUBLIC_URL: z
+    .string()
+    .url()
+    .optional()
+    .transform((val) => val ?? process.env.KEYCLOAK_URL ?? 'http://keycloak.local'),
 
   /**
    * Keycloak realm name
@@ -232,8 +245,13 @@ function loadConfig(): Config {
       warnings.push('KEYCLOAK_CLIENT_SECRET is using default value in production');
     }
 
-    if (config.KEYCLOAK_URL === 'http://keycloak.local') {
-      warnings.push('KEYCLOAK_URL is using default value - configure to point to real Keycloak');
+    if (
+      config.KEYCLOAK_URL === 'http://keycloak.local' ||
+      config.KEYCLOAK_PUBLIC_URL === 'http://keycloak.local'
+    ) {
+      warnings.push(
+        'KEYCLOAK_URL/KEYCLOAK_PUBLIC_URL is using default value - configure to point to real Keycloak',
+      );
     }
 
     if (warnings.length > 0) {

@@ -20,9 +20,11 @@ export interface UserClaims {
 export class AuthService {
   private oidcConfig: client.Configuration | null = null;
   private readonly issuerUrl: string;
+  private readonly publicIssuerUrl: string;
 
   constructor() {
     this.issuerUrl = `${config.KEYCLOAK_URL}/realms/${config.KEYCLOAK_REALM}`;
+    this.publicIssuerUrl = `${config.KEYCLOAK_PUBLIC_URL}/realms/${config.KEYCLOAK_REALM}`;
   }
 
   /**
@@ -82,7 +84,11 @@ export class AuthService {
       state,
     });
 
-    return authUrl.href;
+    // Replace internal Keycloak URL with public one for browser redirect
+    // This allows Docker-internal URLs (http://keycloak:8080) to work for
+    // server-to-server communication while using browser-accessible URLs
+    // (http://127.0.0.1:8080) for OAuth redirects
+    return authUrl.href.replace(this.issuerUrl, this.publicIssuerUrl);
   }
 
   /**
@@ -134,7 +140,8 @@ export class AuthService {
    * @returns Logout URL
    */
   getLogoutUrl(redirectUri: string): string {
-    return `${this.issuerUrl}/protocol/openid-connect/logout?redirect_uri=${encodeURIComponent(redirectUri)}`;
+    // Use public URL for browser redirect (same as auth URL)
+    return `${this.publicIssuerUrl}/protocol/openid-connect/logout?redirect_uri=${encodeURIComponent(redirectUri)}`;
   }
 }
 
