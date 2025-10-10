@@ -153,8 +153,7 @@ const configSchema = z.object({
   KEYCLOAK_PUBLIC_URL: z
     .string()
     .url()
-    .optional()
-    .transform((val) => val ?? process.env.KEYCLOAK_URL ?? 'http://keycloak.local'),
+    .default(process.env.KEYCLOAK_URL ?? 'http://keycloak.local'),
 
   /**
    * Keycloak realm name
