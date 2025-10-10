@@ -176,13 +176,22 @@ async function main() {
   }
 
   console.log('📝 Capturing docker logs...');
-  const logsResult = await logs(['app', 'keycloak', 'postgres', 'redis'], {
-    ...composeOpts,
-    log: false,
-  });
+  try {
+    // Ensure directory exists before writing logs
+    await mkdir('./test-results/e2e-logs', { recursive: true });
 
-  await writeFile('./test-results/e2e-logs/docker-logs.txt', logsResult.out);
-  await writeFile('./test-results/e2e-logs/docker-logs-err.txt', logsResult.err);
+    const logsResult = await logs(['app', 'keycloak', 'postgres', 'redis'], {
+      ...composeOpts,
+      log: false,
+    });
+
+    await writeFile('./test-results/e2e-logs/docker-logs.txt', logsResult.out);
+    await writeFile('./test-results/e2e-logs/docker-logs-err.txt', logsResult.err);
+    console.log('✅ Docker logs captured successfully');
+  } catch (error) {
+    console.warn('⚠️  Failed to capture docker logs:', error.message);
+    // Don't fail the entire test run just because log capture failed
+  }
 
   await cleanUp();
 
