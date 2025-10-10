@@ -45,19 +45,19 @@ test.describe('Tenant Isolation', () => {
 
   /**
    * Helper function to login via the UI
-   * Handles Keycloak's two-step login flow
+   * Handles Keycloak's single-page login form
    */
   async function loginViaUI(page: Page, email: string, password: string) {
     await page.goto('/auth/login');
 
-    // Step 1: Fill in username and click Sign In button
+    // Fill both username and password (single-page Keycloak login form)
     await page.fill('input[name="username"]', email);
-    await page.click('button:has-text("Sign In")');
-
-    // Step 2: Wait for password field to appear, then fill and submit
-    await page.waitForSelector('input[name="password"]', { timeout: 30000 });
     await page.fill('input[name="password"]', password);
-    await page.click('button:has-text("Sign In")');
+
+    // Wait for button to be enabled and click
+    const signInButton = page.locator('button[type="submit"], input[type="submit"]');
+    await signInButton.waitFor({ state: 'visible', timeout: 10000 });
+    await signInButton.click();
 
     // Wait for redirect back to app (callback or final destination)
     await page.waitForURL(/\/callback|\/albums|\/dashboard/, { timeout: 30000 });
