@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer, StartedRedisContainer } from '@testcontainers/redis';
 import { getDb, closeDb } from '../lib/db/index.js';
-import { runMigrations } from '../lib/db/migrations.js';
+import { runMigrations, type MigrationDbConfig } from '../lib/db/migrations.js';
 import { Redis } from '../lib/redis.js';
 import { config } from '../lib/config.js';
 import { roleService } from '../services/role.service.js';
@@ -62,8 +62,15 @@ void describe('Auth System Integration Tests', () => {
       REDIS_PORT: redisContainer.getPort(),
     });
 
-    // Run migrations
-    await runMigrations();
+    // Run migrations with container credentials (avoids global config pollution)
+    const migrationConfig: MigrationDbConfig = {
+      host: pgContainer.getHost(),
+      port: pgContainer.getPort(),
+      database: pgContainer.getDatabase(),
+      user: pgContainer.getUsername(),
+      password: pgContainer.getPassword(),
+    };
+    await runMigrations(migrationConfig);
 
     // Initialize Redis clients
     await Redis.getClient('app');

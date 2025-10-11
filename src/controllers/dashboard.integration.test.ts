@@ -1,6 +1,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
 import { HTTP, controller, get } from '../lib/http/index.js';
+import { getAvailablePort } from '../lib/http/test-utils.js';
 
 // Create a test-specific dashboard controller without authentication
 // to test the rendering functionality in isolation
@@ -25,9 +26,11 @@ const testDashboardController = controller('/').endpoints([
 
 void describe('Dashboard Controller', () => {
   let server: HTTP;
-  const port = 3051; // Use a fixed test port
+  let port: number;
 
-  before(() => {
+  before(async () => {
+    port = await getAvailablePort();
+
     server = new HTTP(
       { controllers: [testDashboardController] },
       {
@@ -39,11 +42,11 @@ void describe('Dashboard Controller', () => {
       },
     );
 
-    server.start();
+    await server.start();
   });
 
-  after(() => {
-    server.stop();
+  after(async () => {
+    await server.stop();
   });
 
   void it('should return HTML with content-type text/html', async () => {

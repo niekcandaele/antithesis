@@ -4,12 +4,15 @@ import { HTTP } from './app.ts';
 import { controller } from './controller.ts';
 import { get } from './endpoint.ts';
 import { getServerContext } from './serverContext.ts';
+import { getAvailablePort } from './test-utils.js';
 
 void describe('ServerContext with AsyncLocalStorage', () => {
   let httpServer: HTTP | undefined;
 
-  after(() => {
-    httpServer?.stop();
+  after(async () => {
+    if (httpServer) {
+      await httpServer.stop();
+    }
   });
 
   void it('should maintain context across async operations in HTTP handler', async () => {
@@ -51,22 +54,21 @@ void describe('ServerContext with AsyncLocalStorage', () => {
       return 'nested-async-complete';
     }
 
+    const port = await getAvailablePort();
+
     httpServer = new HTTP(
       {
         controllers: [testController],
       },
       {
-        port: 3055,
+        port,
       },
     );
 
-    httpServer.start();
-
-    // Give server time to start
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await httpServer.start();
 
     // Make request to test endpoint
-    const response = await fetch('http://localhost:3055/context-test');
+    const response = await fetch(`http://localhost:${String(port)}/context-test`);
     const data = (await response.json()) as { success: boolean; results: string[] };
 
     assert.ok(response.ok, 'Response should be ok');
@@ -77,7 +79,8 @@ void describe('ServerContext with AsyncLocalStorage', () => {
       'nested-async-complete',
     ]);
 
-    httpServer.stop();
+    await httpServer.stop();
+    httpServer = undefined; // Clear reference so after() hook doesn't try to stop again
   });
 
   void it('should throw error when accessing context outside of request scope', () => {
@@ -117,24 +120,23 @@ void describe('ServerContext with AsyncLocalStorage', () => {
         }),
       ]);
 
+    const port = await getAvailablePort();
+
     httpServer = new HTTP(
       {
         controllers: [testController],
       },
       {
-        port: 3056,
+        port,
       },
     );
 
-    httpServer.start();
-
-    // Give server time to start
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await httpServer.start();
 
     // Make concurrent requests
     const [response1, response2] = await Promise.all([
-      fetch('http://localhost:3056/concurrent/1'),
-      fetch('http://localhost:3056/concurrent/2'),
+      fetch(`http://localhost:${String(port)}/concurrent/1`),
+      fetch(`http://localhost:${String(port)}/concurrent/2`),
     ]);
 
     const data1 = (await response1.json()) as { id: string; contextPreserved: boolean };
@@ -152,6 +154,7 @@ void describe('ServerContext with AsyncLocalStorage', () => {
     assert.ok(results.has('2-start'));
     assert.ok(results.has('2-end'));
 
-    httpServer.stop();
+    await httpServer.stop();
+    httpServer = undefined; // Clear reference so after() hook doesn't try to stop again
   });
 });

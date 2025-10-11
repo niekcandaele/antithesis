@@ -12,6 +12,7 @@ import {
   teardownTestDatabase,
   type TestDatabase,
 } from './lib/db/test-helpers.js';
+import { getAvailablePort } from './lib/http/test-utils.js';
 
 // Test DTO
 const CreateTenantSchema = z.object({
@@ -94,7 +95,7 @@ const e2eTestController = controller('/')
 void describe('E2E Integration Test', () => {
   let server: HTTP;
   let testDb: TestDatabase;
-  const port = 3052; // Use a unique test port
+  let port: number;
 
   before(async () => {
     // Setup isolated PostgreSQL testcontainer
@@ -110,6 +111,9 @@ void describe('E2E Integration Test', () => {
     // Initialize Redis
     await Redis.getClient('e2e-test');
 
+    // Get available port
+    port = await getAvailablePort();
+
     // Start server
     server = new HTTP(
       { controllers: [metaController, healthController, e2eTestController] },
@@ -122,11 +126,11 @@ void describe('E2E Integration Test', () => {
       },
     );
 
-    server.start();
+    await server.start();
   });
 
   after(async () => {
-    server.stop();
+    await server.stop();
     health.unregisterReadinessHook('e2e-database');
     await Redis.destroy();
     await teardownTestDatabase(testDb);

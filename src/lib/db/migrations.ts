@@ -28,23 +28,47 @@ function getMigrationFolder(): string {
 }
 
 /**
+ * Database configuration for migrations
+ */
+export interface MigrationDbConfig {
+  host: string;
+  port: number;
+  database: string;
+  user: string;
+  password: string;
+  adminUser?: string;
+  adminPassword?: string;
+}
+
+/**
  * Create a database connection for migrations using admin credentials
  *
  * Migrations require elevated privileges to create/alter tables and RLS policies.
  * Uses DB_ADMIN_USER if set, otherwise falls back to DB_USER.
  *
+ * @param dbConfig - Optional database configuration. If not provided, uses global config
  * @returns Kysely database instance with admin privileges
  */
-function getAdminDbForMigrations(): Kysely<Database> {
-  const pool = new Pool({
-    host: config.DB_HOST,
-    port: config.DB_PORT,
-    database: config.DB_NAME,
-    // Use admin credentials if available, otherwise fallback to regular credentials
-    user: config.DB_ADMIN_USER ?? config.DB_USER,
-    password: config.DB_ADMIN_PASSWORD ?? config.DB_PASSWORD,
-    max: 5, // Smaller pool for migrations
-  });
+function getAdminDbForMigrations(dbConfig?: MigrationDbConfig): Kysely<Database> {
+  const poolConfig = dbConfig
+    ? {
+        host: dbConfig.host,
+        port: dbConfig.port,
+        database: dbConfig.database,
+        user: dbConfig.adminUser ?? dbConfig.user,
+        password: dbConfig.adminPassword ?? dbConfig.password,
+        max: 5,
+      }
+    : {
+        host: config.DB_HOST,
+        port: config.DB_PORT,
+        database: config.DB_NAME,
+        user: config.DB_ADMIN_USER ?? config.DB_USER,
+        password: config.DB_ADMIN_PASSWORD ?? config.DB_PASSWORD,
+        max: 5,
+      };
+
+  const pool = new Pool(poolConfig);
 
   return new Kysely<Database>({
     dialect: new PostgresDialect({ pool }),
@@ -63,6 +87,7 @@ function getAdminDbForMigrations(): Kysely<Database> {
  * - up(): Apply the migration (create tables, add columns, etc.)
  * - down(): Rollback the migration (drop tables, remove columns, etc.)
  *
+ * @param dbConfig - Optional database configuration for tests. If not provided, uses global config
  * @throws {Error} If migration fails
  *
  * @example
@@ -99,9 +124,13 @@ function getAdminDbForMigrations(): Kysely<Database> {
  * }
  * ```
  */
-export async function runMigrations(): Promise<void> {
+export async function runMigrations(dbConfig?: MigrationDbConfig): Promise<void> {
   // Use admin credentials for migrations (requires elevated privileges)
-  const db = getAdminDbForMigrations();
+  const db = getAdminDbForMigrations(dbConfig);
+
+  // Determine app user for permission grants
+  const appUser = dbConfig?.user ?? config.DB_USER;
+  const adminUser = dbConfig?.adminUser ?? config.DB_ADMIN_USER;
 
   try {
     const migrator = new Migrator({
@@ -115,7 +144,8 @@ export async function runMigrations(): Promise<void> {
 
     // In development, auto-run migrations
     // In production, migrations must be run manually via npm run migrate
-    if (config.NODE_ENV === 'development') {
+    // For tests with dbConfig, always run migrations
+    if (config.NODE_ENV === 'development' || dbConfig) {
       log.info('Running database migrations (auto-run in development)');
 
       const { error, results } = await migrator.migrateToLatest();
@@ -136,13 +166,13 @@ export async function runMigrations(): Promise<void> {
 
       log.info('Migrations complete');
 
-      // Grant permissions to app user after migrations
-      if (config.DB_USER !== config.DB_ADMIN_USER) {
-        log.info(`Granting permissions to app user: ${config.DB_USER}`);
-        await sql`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${sql.ref(config.DB_USER)}`.execute(
+      // Grant permissions to app user after migrations (only if different from admin)
+      if (appUser !== adminUser && appUser) {
+        log.info(`Granting permissions to app user: ${appUser}`);
+        await sql`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${sql.ref(appUser)}`.execute(
           db,
         );
-        await sql`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${sql.ref(config.DB_USER)}`.execute(
+        await sql`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${sql.ref(appUser)}`.execute(
           db,
         );
         log.info('Permissions granted successfully');

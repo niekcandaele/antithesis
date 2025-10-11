@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { HTTP, controller, post, apiResponse, zApiOutput } from './index.js';
 import { DTO } from '../DTO.js';
 import { metaController } from '../../controllers/meta.js';
+import { getAvailablePort } from './test-utils.js';
 
 // Test DTO schema
 const UserSchema = z.object({
@@ -39,9 +40,11 @@ const testDtoController = controller('/')
 
 void describe('DTO Integration Test', () => {
   let server: HTTP;
-  const port = 3053; // Use a unique test port
+  let port: number;
 
-  before(() => {
+  before(async () => {
+    port = await getAvailablePort();
+
     server = new HTTP(
       { controllers: [metaController, testDtoController] },
       {
@@ -53,11 +56,11 @@ void describe('DTO Integration Test', () => {
       },
     );
 
-    server.start();
+    await server.start();
   });
 
-  after(() => {
-    server.stop();
+  after(async () => {
+    await server.stop();
   });
 
   void it('should accept valid DTO data and return 200', async () => {
