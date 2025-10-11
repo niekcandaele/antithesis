@@ -51,7 +51,7 @@ export class DatabaseTestHelper {
  */
 export function createDatabaseHelper(): DatabaseTestHelper {
   // Use the same config system as the application
-  const connectionString = `postgresql://${config.DB_USER}:${config.DB_PASSWORD}@${config.DB_HOST}:${config.DB_PORT}/${config.DB_NAME}`;
+  const connectionString = `postgresql://${config.DB_ADMIN_USER}:${config.DB_ADMIN_PASSWORD}@${config.DB_HOST}:${config.DB_PORT}/${config.DB_NAME}`;
 
   return new DatabaseTestHelper({
     connectionString,

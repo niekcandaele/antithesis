@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
+import { test as base, expect, type Page } from '@playwright/test';
 import { createKeycloakHelper, type KeycloakTestHelper } from '../helpers/keycloak.js';
 import { createDatabaseHelper, type DatabaseTestHelper } from '../helpers/database.js';
 
@@ -16,10 +17,36 @@ import { createDatabaseHelper, type DatabaseTestHelper } from '../helpers/databa
  * No manual tenant/organization setup needed.
  */
 
+interface TestUser {
+  email: string;
+  password: string;
+}
+
+interface TenantUsers {
+  userA: TestUser;
+  userB: TestUser;
+}
+
+function createTestUser(): TestUser {
+  return {
+    email: `test-${randomUUID().slice(0, 8)}@test.com`,
+    password: randomUUID(),
+  };
+}
+
 let keycloak: KeycloakTestHelper;
 let database: DatabaseTestHelper;
-let userAId: string;
-let userBId: string;
+
+// Extend Playwright test with tenantUsers fixture
+const test = base.extend<{ tenantUsers: TenantUsers }>({
+  tenantUsers: async ({}, use) => {
+    const userA = createTestUser();
+    const userB = createTestUser();
+    await keycloak.createUser(userA.email, userA.password);
+    await keycloak.createUser(userB.email, userB.password);
+    await use({ userA, userB });
+  },
+});
 
 test.describe('Tenant Isolation', () => {
   test.beforeAll(async () => {
@@ -28,13 +55,6 @@ test.describe('Tenant Isolation', () => {
     await database.cleanup();
 
     keycloak = createKeycloakHelper();
-
-    // Create two test users in Keycloak
-    // Their personal tenants will be auto-provisioned on first login
-    const userA = await keycloak.createUser('tenant-a@test.com', 'TestPassword123!');
-    const userB = await keycloak.createUser('tenant-b@test.com', 'TestPassword123!');
-    userAId = userA.id;
-    userBId = userB.id;
   });
 
   test.afterAll(async () => {
@@ -47,12 +67,12 @@ test.describe('Tenant Isolation', () => {
    * Helper function to login via the UI
    * Handles Keycloak's single-page login form
    */
-  async function loginViaUI(page: Page, email: string, password: string) {
+  async function loginViaUI(page: Page, user: TestUser) {
     await page.goto('/auth/login');
 
     // Fill both username and password (single-page Keycloak login form)
-    await page.fill('input[name="username"]', email);
-    await page.fill('input[name="password"]', password);
+    await page.fill('input[name="username"]', user.email);
+    await page.fill('input[name="password"]', user.password);
 
     // Wait for button to be enabled and click
     const signInButton = page.locator('button[type="submit"], input[type="submit"]');
@@ -63,9 +83,9 @@ test.describe('Tenant Isolation', () => {
     await page.waitForURL(/\/callback|\/albums|\/dashboard/, { timeout: 30000 });
   }
 
-  test('User A creates album - visible to A only', async ({ page }) => {
+  test('User A creates album - visible to A only', async ({ page, tenantUsers }) => {
     // Login as User A
-    await loginViaUI(page, 'tenant-a@test.com', 'TestPassword123!');
+    await loginViaUI(page, tenantUsers.userA);
 
     // Navigate to albums page
     await page.goto('/albums');
@@ -81,9 +101,23 @@ test.describe('Tenant Isolation', () => {
     await expect(page.locator('text=User A Test Album')).toBeVisible();
   });
 
-  test('User B cannot see User A album', async ({ page }) => {
-    // Login as User B
-    await loginViaUI(page, 'tenant-b@test.com', 'TestPassword123!');
+  test('User B cannot see User A album', async ({ page, tenantUsers }) => {
+    // First, login as User A and create an album
+    await loginViaUI(page, tenantUsers.userA);
+    await page.goto('/albums');
+    await page.click('a[href="/albums/new"]');
+    await page.fill('input[name="name"]', 'User A Test Album');
+    await page.fill('textarea[name="description"]', 'This album belongs to User A');
+    await page.click('button[type="submit"]');
+    await page.waitForURL(/\/albums\/[a-f0-9-]+/);
+
+    // Logout and login as User B
+    await page.goto('/auth/logout');
+    await page.waitForLoadState('networkidle');
+    await page.context().clearCookies();
+    await page.waitForTimeout(500);
+
+    await loginViaUI(page, tenantUsers.userB);
 
     // Navigate to albums page
     await page.goto('/albums');
@@ -92,9 +126,9 @@ test.describe('Tenant Isolation', () => {
     await expect(page.locator('text=User A Test Album')).not.toBeVisible();
   });
 
-  test('User B cannot access User A album by direct URL', async ({ page, context }) => {
+  test('User B cannot access User A album by direct URL', async ({ page, tenantUsers }) => {
     // First, login as User A and create an album, capturing its ID
-    await loginViaUI(page, 'tenant-a@test.com', 'TestPassword123!');
+    await loginViaUI(page, tenantUsers.userA);
     await page.goto('/albums');
 
     // Create an album and get its ID from the URL after creation
@@ -114,7 +148,7 @@ test.describe('Tenant Isolation', () => {
     await page.waitForTimeout(500);
 
     // Login as User B
-    await loginViaUI(page, 'tenant-b@test.com', 'TestPassword123!');
+    await loginViaUI(page, tenantUsers.userB);
 
     // Attempt to access User A's album by direct URL
     await page.goto(`/albums/${albumId}`);
@@ -127,9 +161,9 @@ test.describe('Tenant Isolation', () => {
     ).toBeVisible();
   });
 
-  test('User A cannot add photos to User B album', async ({ page }) => {
+  test('User A cannot add photos to User B album', async ({ page, tenantUsers }) => {
     // Login as User B and create an album
-    await loginViaUI(page, 'tenant-b@test.com', 'TestPassword123!');
+    await loginViaUI(page, tenantUsers.userB);
     await page.goto('/albums');
     await page.click('a[href="/albums/new"]');
     await page.fill('input[name="name"]', 'User B Album');
@@ -147,7 +181,7 @@ test.describe('Tenant Isolation', () => {
     await page.waitForTimeout(500);
 
     // Login as User A
-    await loginViaUI(page, 'tenant-a@test.com', 'TestPassword123!');
+    await loginViaUI(page, tenantUsers.userA);
 
     // Attempt to add a photo to User B's album via direct URL
     await page.goto(`/albums/${userBAlbumId}/photos/new`);
@@ -158,9 +192,9 @@ test.describe('Tenant Isolation', () => {
     ).toBeVisible();
   });
 
-  test('User A cannot access User B photos', async ({ page }) => {
+  test('User A cannot access User B photos', async ({ page, tenantUsers }) => {
     // Login as User B and create an album with a photo
-    await loginViaUI(page, 'tenant-b@test.com', 'TestPassword123!');
+    await loginViaUI(page, tenantUsers.userB);
     await page.goto('/albums');
     await page.click('a[href="/albums/new"]');
     await page.fill('input[name="name"]', 'User B Photo Album');
@@ -189,7 +223,7 @@ test.describe('Tenant Isolation', () => {
     await page.waitForTimeout(500);
 
     // Login as User A
-    await loginViaUI(page, 'tenant-a@test.com', 'TestPassword123!');
+    await loginViaUI(page, tenantUsers.userA);
 
     // Attempt to access User B's photo by direct URL
     await page.goto(`/photos/${photoId}`);

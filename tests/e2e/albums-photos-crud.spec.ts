@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
+import { test as base, expect, type Page } from '@playwright/test';
 import { createKeycloakHelper, type KeycloakTestHelper } from '../helpers/keycloak.js';
 import { createDatabaseHelper, type DatabaseTestHelper } from '../helpers/database.js';
 
@@ -16,9 +17,29 @@ import { createDatabaseHelper, type DatabaseTestHelper } from '../helpers/databa
  * No manual tenant/organization setup needed.
  */
 
+interface TestUser {
+  email: string;
+  password: string;
+}
+
+function createTestUser(): TestUser {
+  return {
+    email: `test-${randomUUID().slice(0, 8)}@test.com`,
+    password: randomUUID(),
+  };
+}
+
 let keycloak: KeycloakTestHelper;
 let database: DatabaseTestHelper;
-let userId: string;
+
+// Extend Playwright test with testUser fixture
+const test = base.extend<{ testUser: TestUser }>({
+  testUser: async ({}, use) => {
+    const user = createTestUser();
+    await keycloak.createUser(user.email, user.password);
+    await use(user);
+  },
+});
 
 test.describe('Albums & Photos CRUD', () => {
   test.beforeAll(async () => {
@@ -27,11 +48,6 @@ test.describe('Albums & Photos CRUD', () => {
     await database.cleanup();
 
     keycloak = createKeycloakHelper();
-
-    // Create test user in Keycloak
-    // Personal tenant will be auto-provisioned on first login
-    const user = await keycloak.createUser('crud-test@test.com', 'TestPassword123!');
-    userId = user.id;
   });
 
   test.afterAll(async () => {
@@ -39,12 +55,12 @@ test.describe('Albums & Photos CRUD', () => {
     await database.close();
   });
 
-  async function loginViaUI(page: Page, email: string, password: string) {
+  async function loginViaUI(page: Page, user: TestUser): Promise<string> {
     await page.goto('/auth/login');
 
     // Fill both username and password (single-page Keycloak login form)
-    await page.fill('input[name="username"]', email);
-    await page.fill('input[name="password"]', password);
+    await page.fill('input[name="username"]', user.email);
+    await page.fill('input[name="password"]', user.password);
 
     // Wait for button to be enabled and click
     const signInButton = page.locator('button[type="submit"], input[type="submit"]');
@@ -53,10 +69,12 @@ test.describe('Albums & Photos CRUD', () => {
 
     // Wait for redirect back to app (callback or final destination)
     await page.waitForURL(/\/callback|\/albums|\/dashboard/, { timeout: 30000 });
+
+    return user.email; // Return for tests that need to verify email in UI
   }
 
-  test('Album soft delete and restore', async ({ page }) => {
-    await loginViaUI(page, 'crud-test@test.com', 'TestPassword123!');
+  test('Album soft delete and restore', async ({ page, testUser }) => {
+    await loginViaUI(page, testUser);
 
     // Create album
     await page.goto('/albums');
@@ -86,8 +104,8 @@ test.describe('Albums & Photos CRUD', () => {
     // TODO: If restore functionality is implemented, test restore here
   });
 
-  test('Photo soft delete', async ({ page }) => {
-    await loginViaUI(page, 'crud-test@test.com', 'TestPassword123!');
+  test('Photo soft delete', async ({ page, testUser }) => {
+    await loginViaUI(page, testUser);
 
     // Create album
     await page.goto('/albums');
@@ -119,8 +137,8 @@ test.describe('Albums & Photos CRUD', () => {
     await expect(page.locator('text=Photo to Delete')).not.toBeVisible();
   });
 
-  test('Album status transitions: draft → published → archived', async ({ page }) => {
-    await loginViaUI(page, 'crud-test@test.com', 'TestPassword123!');
+  test('Album status transitions: draft → published → archived', async ({ page, testUser }) => {
+    await loginViaUI(page, testUser);
 
     // Create album with draft status
     await page.goto('/albums');
@@ -158,8 +176,8 @@ test.describe('Albums & Photos CRUD', () => {
     await expect(page.locator('h1 .badge').filter({ hasText: /archived/i })).toBeVisible();
   });
 
-  test('Photo status transitions: draft → published → archived', async ({ page }) => {
-    await loginViaUI(page, 'crud-test@test.com', 'TestPassword123!');
+  test('Photo status transitions: draft → published → archived', async ({ page, testUser }) => {
+    await loginViaUI(page, testUser);
 
     // Create album
     await page.goto('/albums');
@@ -216,8 +234,8 @@ test.describe('Albums & Photos CRUD', () => {
     ).toBeVisible();
   });
 
-  test('Creator tracking for albums', async ({ page }) => {
-    await loginViaUI(page, 'crud-test@test.com', 'TestPassword123!');
+  test('Creator tracking for albums', async ({ page, testUser }) => {
+    const email = await loginViaUI(page, testUser);
 
     // Create album
     await page.goto('/albums');
@@ -228,12 +246,14 @@ test.describe('Albums & Photos CRUD', () => {
 
     // Verify creator information is shown in the album detail card
     await expect(
-      page.locator('.text-sm.opacity-50', { hasText: /Created by.*crud-test@test\.com/i }),
+      page.locator('.text-sm.opacity-50', {
+        hasText: new RegExp(`Created by.*${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i'),
+      }),
     ).toBeVisible();
   });
 
-  test('Parent-child relationship: photos belong to correct album', async ({ page }) => {
-    await loginViaUI(page, 'crud-test@test.com', 'TestPassword123!');
+  test('Parent-child relationship: photos belong to correct album', async ({ page, testUser }) => {
+    await loginViaUI(page, testUser);
 
     // Create two albums
     await page.goto('/albums');

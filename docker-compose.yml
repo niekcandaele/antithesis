@@ -118,6 +118,8 @@ services:
       - KEYCLOAK_CLIENT_ID=antithesis-app
       - KEYCLOAK_CLIENT_SECRET=dev-secret-change-in-production
       - KEYCLOAK_ALLOW_HTTP=true
+      - KEYCLOAK_ADMIN_USER=admin # Admin user for Keycloak test helpers
+      - KEYCLOAK_ADMIN_PASSWORD=admin # Admin password for Keycloak test helpers
       - SESSION_SECRET=dev-session-secret-change-in-production
     stdin_open: true
     tty: true
