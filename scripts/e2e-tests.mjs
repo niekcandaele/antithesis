@@ -63,8 +63,8 @@ console.log(`   CI Mode: ${IS_CI}`);
 
 process.env = {
   ...process.env,
-  POSTGRES_USER: 'antithesis-test',
-  POSTGRES_DB: 'antithesis-test-db',
+  POSTGRES_USER: 'antithesis_test',
+  POSTGRES_DB: 'antithesis_test_db',
   POSTGRES_PASSWORD,
   KEYCLOAK_URL: 'http://127.0.0.1:8080',
   KEYCLOAK_ADMIN_PASSWORD,
