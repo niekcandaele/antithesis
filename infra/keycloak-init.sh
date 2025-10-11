@@ -52,11 +52,25 @@ if [ "$REALM_EXISTS" = "404" ]; then
       \"enabled\": true,
       \"registrationAllowed\": false,
       \"loginWithEmailAllowed\": true,
-      \"duplicateEmailsAllowed\": false
+      \"duplicateEmailsAllowed\": false,
+      \"sslRequired\": \"none\"
     }"
   echo "✅ Realm created"
 else
-  echo "ℹ️  Realm already exists"
+  echo "ℹ️  Realm already exists, updating SSL requirement..."
+  curl -sS -X PUT \
+    "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM" \
+    -H "Authorization: Bearer $ADMIN_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"realm\": \"$KEYCLOAK_REALM\",
+      \"enabled\": true,
+      \"registrationAllowed\": false,
+      \"loginWithEmailAllowed\": true,
+      \"duplicateEmailsAllowed\": false,
+      \"sslRequired\": \"none\"
+    }"
+  echo "✅ Realm updated"
 fi
 
 # Create OIDC client
@@ -64,6 +78,11 @@ echo "🔐 Creating OIDC client '$KEYCLOAK_CLIENT_ID'..."
 CLIENT_EXISTS=$(curl -sS -X GET \
   "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/clients?clientId=$KEYCLOAK_CLIENT_ID" \
   -H "Authorization: Bearer $ADMIN_TOKEN" | jq -r '. | length')
+
+# Get client UUID for updates
+CLIENT_UUID=$(curl -sS -X GET \
+  "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/clients?clientId=$KEYCLOAK_CLIENT_ID" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" | jq -r '.[0].id // empty')
 
 if [ "$CLIENT_EXISTS" = "0" ]; then
   curl -sS -X POST \
@@ -81,20 +100,44 @@ if [ "$CLIENT_EXISTS" = "0" ]; then
       \"redirectUris\": [
         \"http://127.0.0.1:13000/auth/callback\",
         \"http://localhost:13000/auth/callback\",
-        \"http://127.0.0.1:3000/auth/callback\",
-        \"http://localhost:3000/auth/callback\"
+        \"${PUBLIC_API_URL}/auth/callback\"
       ],
       \"webOrigins\": [
         \"http://127.0.0.1:13000\",
         \"http://localhost:13000\",
-        \"http://127.0.0.1:3000\",
-        \"http://localhost:3000\"
+        \"${PUBLIC_API_URL}\"
       ],
       \"secret\": \"$KEYCLOAK_CLIENT_SECRET\"
     }"
   echo "✅ OIDC client created"
 else
-  echo "ℹ️  OIDC client already exists"
+  echo "ℹ️  OIDC client already exists, updating redirect URIs..."
+  curl -sS -X PUT \
+    "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/clients/$CLIENT_UUID" \
+    -H "Authorization: Bearer $ADMIN_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"id\": \"$CLIENT_UUID\",
+      \"clientId\": \"$KEYCLOAK_CLIENT_ID\",
+      \"enabled\": true,
+      \"protocol\": \"openid-connect\",
+      \"publicClient\": false,
+      \"standardFlowEnabled\": true,
+      \"directAccessGrantsEnabled\": false,
+      \"serviceAccountsEnabled\": false,
+      \"redirectUris\": [
+        \"http://127.0.0.1:13000/auth/callback\",
+        \"http://localhost:13000/auth/callback\",
+        \"${PUBLIC_API_URL}/auth/callback\"
+      ],
+      \"webOrigins\": [
+        \"http://127.0.0.1:13000\",
+        \"http://localhost:13000\",
+        \"${PUBLIC_API_URL}\"
+      ],
+      \"secret\": \"$KEYCLOAK_CLIENT_SECRET\"
+    }"
+  echo "✅ OIDC client updated"
 fi
 
 # Add protocol mappers to OIDC client

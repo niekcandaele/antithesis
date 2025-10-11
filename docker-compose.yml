@@ -65,6 +65,7 @@ services:
       KEYCLOAK_URL: http://keycloak:8080
       KEYCLOAK_ADMIN_PASSWORD: admin
       KEYCLOAK_CLIENT_SECRET: dev-secret-change-in-production
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:3000}
     volumes:
       - ./infra/keycloak-init.sh:/scripts/keycloak-init.sh:ro
     command: >
@@ -100,9 +101,9 @@ services:
       - PUBLIC_API_PORT=3000
       - ADMIN_API_PORT=3001
       - META_API_PORT=3002
-      - PUBLIC_API_URL=http://localhost:3000
-      - ADMIN_API_URL=http://localhost:3001
-      - META_API_URL=http://localhost:3002
+      - PUBLIC_API_URL=${PUBLIC_API_URL:-http://localhost:3000}
+      - ADMIN_API_URL=${ADMIN_API_URL:-http://localhost:3001}
+      - META_API_URL=${META_API_URL:-http://localhost:3002}
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=antithesis
@@ -113,7 +114,7 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - KEYCLOAK_URL=http://keycloak:8080
-      - KEYCLOAK_PUBLIC_URL=http://localhost:8080
+      - KEYCLOAK_PUBLIC_URL=${KEYCLOAK_PUBLIC_URL:-http://localhost:8080}
       - KEYCLOAK_REALM=antithesis
       - KEYCLOAK_CLIENT_ID=antithesis-app
       - KEYCLOAK_CLIENT_SECRET=dev-secret-change-in-production
