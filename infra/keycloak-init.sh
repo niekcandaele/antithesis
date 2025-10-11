@@ -13,6 +13,7 @@ KEYCLOAK_URL=${KEYCLOAK_URL:-http://localhost:8080}
 KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN:-admin}
 KEYCLOAK_REALM=antithesis
 KEYCLOAK_CLIENT_ID=antithesis-app
+PUBLIC_API_URL=${PUBLIC_API_URL:-http://localhost:3000}
 
 echo "🔧 Initializing Keycloak for E2E tests..."
 echo "   URL: $KEYCLOAK_URL"
