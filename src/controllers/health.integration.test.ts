@@ -3,12 +3,15 @@ import assert from 'node:assert';
 import { HTTP } from '../lib/http/index.js';
 import { healthController } from './health.js';
 import { health } from '../lib/health.js';
+import { getAvailablePort } from '../lib/http/test-utils.js';
 
 void describe('Health Controller', () => {
   let server: HTTP;
-  const port = 3050; // Use a fixed test port
+  let port: number;
 
-  before(() => {
+  before(async () => {
+    port = await getAvailablePort();
+
     server = new HTTP(
       { controllers: [healthController] },
       {
@@ -20,11 +23,11 @@ void describe('Health Controller', () => {
       },
     );
 
-    server.start();
+    await server.start();
   });
 
-  after(() => {
-    server.stop();
+  after(async () => {
+    await server.stop();
   });
 
   void it('should return 200 with apiResponse({healthy: true}) when all checks pass', async () => {

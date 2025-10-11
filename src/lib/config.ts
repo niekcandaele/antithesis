@@ -70,7 +70,13 @@ const configSchema = z.object({
    * Database user (application runtime - non-superuser for RLS enforcement)
    * @example 'antithesis_app'
    */
-  DB_USER: z.string().default('antithesis_app'),
+  DB_USER: z
+    .string()
+    .regex(
+      /^[A-Za-z_][A-Za-z0-9_]*$/,
+      'DB_USER must be a valid PostgreSQL identifier (alphanumeric + underscores, cannot start with number)',
+    )
+    .default('antithesis_app'),
 
   /**
    * Database password

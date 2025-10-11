@@ -2,16 +2,19 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
 import { HTTP } from './index.js';
 import { controller, get } from './index.js';
+import { getAvailablePort } from './test-utils.js';
 
 void describe('HTTP App - Static Assets and CSS', () => {
   let server: HTTP;
-  const port = 3054;
+  let port: number;
 
   const testController = controller('/').endpoints([
     get('/test', 'test').handler(() => Promise.resolve({ message: 'test' })),
   ]);
 
-  before(() => {
+  before(async () => {
+    port = await getAvailablePort();
+
     server = new HTTP(
       { controllers: [testController] },
       {
@@ -23,11 +26,11 @@ void describe('HTTP App - Static Assets and CSS', () => {
       },
     );
 
-    server.start();
+    await server.start();
   });
 
-  after(() => {
-    server.stop();
+  after(async () => {
+    await server.stop();
   });
 
   void it('should serve CSS from /css/main.css', async () => {

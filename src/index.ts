@@ -169,8 +169,8 @@ const metaApiServer = new HTTP(
   },
 );
 
-publicApiServer.start();
-adminApiServer.start();
-metaApiServer.start();
+await publicApiServer.start();
+await adminApiServer.start();
+await metaApiServer.start();
 
 export {};

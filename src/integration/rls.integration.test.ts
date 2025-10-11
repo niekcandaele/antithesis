@@ -6,10 +6,11 @@ import { HTTP } from '../lib/http/index.js';
 import { albumsController } from '../controllers/albums/albums.controller.js';
 import { closeDb } from '../lib/db/index.js';
 import { tenantResolution } from '../lib/http/middleware/tenantResolution.middleware.js';
-import { runMigrations } from '../lib/db/migrations.js';
+import { runMigrations, type MigrationDbConfig } from '../lib/db/migrations.js';
 import { Redis } from '../lib/redis.js';
 import { config } from '../lib/config.js';
 import type { Database } from '../lib/db/types.js';
+import { getAvailablePort } from '../lib/http/test-utils.js';
 
 /**
  * Row Level Security (RLS) Integration Tests
@@ -34,7 +35,7 @@ void describe('RLS Integration Tests via HTTP API', () => {
   let pgContainer: StartedPostgreSqlContainer;
   let redisContainer: StartedRedisContainer;
   let originalEnv: Record<string, string | undefined>;
-  const port = 3053; // Unique test port
+  let port: number;
 
   // Test data IDs
   let tenant1Id: string;
@@ -121,8 +122,17 @@ void describe('RLS Integration Tests via HTTP API', () => {
       REDIS_PORT: redisContainer.getPort(),
     });
 
-    // Run migrations (includes RLS setup) - uses admin credentials
-    await runMigrations();
+    // Run migrations with container credentials (avoids global config pollution)
+    const migrationConfig: MigrationDbConfig = {
+      host: pgContainer.getHost(),
+      port: pgContainer.getPort(),
+      database: pgContainer.getDatabase(),
+      user: 'antithesis_app',
+      password: 'test123',
+      adminUser: adminUser,
+      adminPassword: adminPassword,
+    };
+    await runMigrations(migrationConfig);
 
     // Grant permissions to application user for tables created by migrations
     const adminPool2 = new Pool({
@@ -145,6 +155,9 @@ void describe('RLS Integration Tests via HTTP API', () => {
     // Initialize Redis
     await Redis.getClient('rls-test');
 
+    // Get available port for HTTP server
+    port = await getAvailablePort();
+
     // Start HTTP server with albums controller and tenant resolution middleware
     server = new HTTP(
       {
@@ -159,10 +172,7 @@ void describe('RLS Integration Tests via HTTP API', () => {
         },
       },
     );
-    server.start();
-
-    // Wait for server to be fully ready
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await server.start();
 
     // Create test data using raw admin connection (no RLS)
     // We use the postgres superuser to create test data directly
@@ -265,7 +275,7 @@ void describe('RLS Integration Tests via HTTP API', () => {
 
   after(async () => {
     // Cleanup
-    server.stop();
+    await server.stop();
     await closeDb();
     await Redis.destroy();
     await pgContainer.stop();

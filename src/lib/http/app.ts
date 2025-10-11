@@ -130,14 +130,25 @@ export class HTTP {
     return this.httpServer;
   }
 
-  start() {
-    this.httpServer = this.httpServer.listen(this.httpOptions.port, () => {
-      this.logger.info(`HTTP server listening on port ${String(this.httpOptions.port)}`);
+  async start(): Promise<void> {
+    return new Promise<void>((resolve) => {
+      this.httpServer.listen(this.httpOptions.port, () => {
+        this.logger.info(`HTTP server listening on port ${String(this.httpOptions.port)}`);
+        resolve();
+      });
     });
   }
 
-  stop() {
-    this.httpServer.close();
-    this.logger.info('HTTP server stopped');
+  async stop(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      this.httpServer.close((err) => {
+        if (err) {
+          reject(err);
+        } else {
+          this.logger.info('HTTP server stopped');
+          resolve();
+        }
+      });
+    });
   }
 }

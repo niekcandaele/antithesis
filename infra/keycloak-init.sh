@@ -13,6 +13,7 @@ KEYCLOAK_URL=${KEYCLOAK_URL:-http://localhost:8080}
 KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN:-admin}
 KEYCLOAK_REALM=antithesis
 KEYCLOAK_CLIENT_ID=antithesis-app
+PUBLIC_API_URL=${PUBLIC_API_URL:-http://localhost:3000}
 
 echo "🔧 Initializing Keycloak for E2E tests..."
 echo "   URL: $KEYCLOAK_URL"
@@ -52,11 +53,35 @@ if [ "$REALM_EXISTS" = "404" ]; then
       \"enabled\": true,
       \"registrationAllowed\": false,
       \"loginWithEmailAllowed\": true,
-      \"duplicateEmailsAllowed\": false
+      \"duplicateEmailsAllowed\": false,
+      \"sslRequired\": \"none\"
     }"
   echo "✅ Realm created"
 else
-  echo "ℹ️  Realm already exists"
+  echo "ℹ️  Realm already exists, updating SSL requirement..."
+
+  # GET current realm configuration
+  CURRENT_REALM=$(curl -sS -X GET \
+    "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM" \
+    -H "Authorization: Bearer $ADMIN_TOKEN")
+
+  # Check if GET was successful
+  if [ -z "$CURRENT_REALM" ] || [ "$CURRENT_REALM" = "null" ]; then
+    echo "❌ Failed to fetch current realm configuration"
+    exit 1
+  fi
+
+  # Merge: Update only sslRequired field, preserve everything else
+  UPDATED_REALM=$(echo "$CURRENT_REALM" | jq '.sslRequired = "none"')
+
+  # PUT the complete merged configuration back
+  curl -sS -X PUT \
+    "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM" \
+    -H "Authorization: Bearer $ADMIN_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$UPDATED_REALM"
+
+  echo "✅ Realm updated (SSL requirement set to 'none', all other settings preserved)"
 fi
 
 # Create OIDC client
@@ -64,6 +89,11 @@ echo "🔐 Creating OIDC client '$KEYCLOAK_CLIENT_ID'..."
 CLIENT_EXISTS=$(curl -sS -X GET \
   "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/clients?clientId=$KEYCLOAK_CLIENT_ID" \
   -H "Authorization: Bearer $ADMIN_TOKEN" | jq -r '. | length')
+
+# Get client UUID for updates
+CLIENT_UUID=$(curl -sS -X GET \
+  "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/clients?clientId=$KEYCLOAK_CLIENT_ID" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" | jq -r '.[0].id // empty')
 
 if [ "$CLIENT_EXISTS" = "0" ]; then
   curl -sS -X POST \
@@ -81,20 +111,44 @@ if [ "$CLIENT_EXISTS" = "0" ]; then
       \"redirectUris\": [
         \"http://127.0.0.1:13000/auth/callback\",
         \"http://localhost:13000/auth/callback\",
-        \"http://127.0.0.1:3000/auth/callback\",
-        \"http://localhost:3000/auth/callback\"
+        \"${PUBLIC_API_URL}/auth/callback\"
       ],
       \"webOrigins\": [
         \"http://127.0.0.1:13000\",
         \"http://localhost:13000\",
-        \"http://127.0.0.1:3000\",
-        \"http://localhost:3000\"
+        \"${PUBLIC_API_URL}\"
       ],
       \"secret\": \"$KEYCLOAK_CLIENT_SECRET\"
     }"
   echo "✅ OIDC client created"
 else
-  echo "ℹ️  OIDC client already exists"
+  echo "ℹ️  OIDC client already exists, updating redirect URIs..."
+
+  # GET current client configuration
+  CURRENT_CLIENT=$(curl -sS -X GET \
+    "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/clients/$CLIENT_UUID" \
+    -H "Authorization: Bearer $ADMIN_TOKEN")
+
+  # Check if GET was successful
+  if [ -z "$CURRENT_CLIENT" ] || [ "$CURRENT_CLIENT" = "null" ]; then
+    echo "❌ Failed to fetch current client configuration"
+    exit 1
+  fi
+
+  # Merge: Update only redirectUris and webOrigins, preserve everything else
+  UPDATED_CLIENT=$(echo "$CURRENT_CLIENT" | jq \
+    --argjson redirectUris '["http://127.0.0.1:13000/auth/callback","http://localhost:13000/auth/callback","'"${PUBLIC_API_URL}"'/auth/callback"]' \
+    --argjson webOrigins '["http://127.0.0.1:13000","http://localhost:13000","'"${PUBLIC_API_URL}"'"]' \
+    '.redirectUris = $redirectUris | .webOrigins = $webOrigins')
+
+  # PUT the complete merged configuration back
+  curl -sS -X PUT \
+    "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/clients/$CLIENT_UUID" \
+    -H "Authorization: Bearer $ADMIN_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$UPDATED_CLIENT"
+
+  echo "✅ OIDC client updated (redirect URIs and web origins set, all other settings preserved)"
 fi
 
 # Add protocol mappers to OIDC client
