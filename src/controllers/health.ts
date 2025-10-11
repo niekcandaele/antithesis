@@ -9,7 +9,7 @@ import { health } from '../lib/health.js';
  * - /healthz: Liveness probe (checks if app is alive)
  * - /readyz: Readiness probe (checks if app can serve traffic)
  */
-export const healthController = controller('health')
+export const healthController = controller('/')
   .description('Health check endpoints for monitoring')
   .endpoints([
     /**

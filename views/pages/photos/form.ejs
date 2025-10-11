@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> - Antithesis</title>
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+  <%- include('../../partials/header') %>
+
+  <main class="container mx-auto px-4 py-8">
+    <div class="max-w-2xl mx-auto space-y-6">
+      <!-- Breadcrumbs -->
+      <div class="text-sm breadcrumbs">
+        <ul>
+          <li><a href="/">Home</a></li>
+          <li><a href="/albums">Albums</a></li>
+          <% if (albumId) { %>
+            <li><a href="/albums/<%= albumId %>">Album</a></li>
+          <% } %>
+          <% if (photo) { %>
+            <li>Edit Photo</li>
+          <% } else { %>
+            <li>New Photo</li>
+          <% } %>
+        </ul>
+      </div>
+
+      <!-- Form Card -->
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+          <h1 class="text-3xl font-bold mb-6"><%= title %></h1>
+
+          <form method="POST" action="<%= photo ? '/photos/' + photo.id : '/photos' %>" class="space-y-4">
+            <!-- Hidden Album ID -->
+            <% if (albumId || (photo && photo.albumId)) { %>
+              <input type="hidden" name="albumId" value="<%= albumId || photo.albumId %>" />
+            <% } %>
+
+            <!-- Album Selection (only if creating new photo without albumId) -->
+            <% if (!photo && !albumId) { %>
+              <div class="form-control">
+                <label class="label">
+                  <span class="label-text">Album <span class="text-error">*</span></span>
+                </label>
+                <input
+                  type="text"
+                  name="albumId"
+                  placeholder="Album ID"
+                  class="input input-bordered w-full"
+                  required
+                />
+                <label class="label">
+                  <span class="label-text-alt text-warning">Note: Select album from the album detail page for better experience</span>
+                </label>
+              </div>
+            <% } %>
+
+            <!-- Title Field -->
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text">Photo Title <span class="text-error">*</span></span>
+              </label>
+              <input
+                type="text"
+                name="title"
+                placeholder="Enter photo title"
+                class="input input-bordered w-full"
+                value="<%= photo ? photo.title : '' %>"
+                required
+              />
+            </div>
+
+            <!-- Description Field -->
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text">Description</span>
+              </label>
+              <textarea
+                name="description"
+                placeholder="Enter photo description"
+                class="textarea textarea-bordered h-24"
+              ><%= photo && photo.description ? photo.description : '' %></textarea>
+            </div>
+
+            <!-- Photo URL Field -->
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text">Photo URL <span class="text-error">*</span></span>
+              </label>
+              <input
+                type="url"
+                name="url"
+                placeholder="https://example.com/photo.jpg"
+                class="input input-bordered w-full"
+                value="<%= photo && photo.url ? photo.url : '' %>"
+                required
+              />
+              <label class="label">
+                <span class="label-text-alt">Provide a URL to the photo</span>
+              </label>
+            </div>
+
+            <!-- Thumbnail URL Field -->
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text">Thumbnail URL</span>
+              </label>
+              <input
+                type="url"
+                name="thumbnailUrl"
+                placeholder="https://example.com/thumbnail.jpg"
+                class="input input-bordered w-full"
+                value="<%= photo && photo.thumbnailUrl ? photo.thumbnailUrl : '' %>"
+              />
+              <label class="label">
+                <span class="label-text-alt">Optional: Provide a URL for the thumbnail</span>
+              </label>
+            </div>
+
+            <!-- Status Field -->
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text">Status</span>
+              </label>
+              <select name="status" class="select select-bordered w-full">
+                <option value="draft" <%= photo && photo.status === 'draft' ? 'selected' : !photo ? 'selected' : '' %>>Draft</option>
+                <option value="published" <%= photo && photo.status === 'published' ? 'selected' : '' %>>Published</option>
+                <option value="archived" <%= photo && photo.status === 'archived' ? 'selected' : '' %>>Archived</option>
+              </select>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="card-actions justify-end gap-2 mt-6">
+              <a href="<%= albumId ? '/albums/' + albumId : '/albums' %>" class="btn btn-ghost">Cancel</a>
+              <button type="submit" class="btn btn-primary">
+                <%= photo ? 'Update Photo' : 'Add Photo' %>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <%- include('../../partials/footer') %>
+</body>
+</html>

@@ -29,6 +29,11 @@ export default tseslint.config(
       'eslint.config.js',
       'tailwind.config.js',
       'postcss.config.js',
+      'scripts/**/*',
+      'tests/**/*',
+      'playwright.config.ts',
+      'playwright-report/**/*',
+      'test-results/**/*',
     ],
   },
 );

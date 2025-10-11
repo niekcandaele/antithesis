@@ -1,0 +1,14 @@
+# Helm charts contain Go template syntax that Prettier cannot parse
+chart/
+
+# Claude Code user-specific settings
+.claude/
+
+# Standard ignores
+node_modules/
+dist/
+build/
+coverage/
+.next/
+playwright-report/
+test-results/

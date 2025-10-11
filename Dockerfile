@@ -23,6 +23,8 @@ FROM node:22-alpine
 
 WORKDIR /app
 
+ENV VIEWS_DIR=/app/views
+
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 

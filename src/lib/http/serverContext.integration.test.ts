@@ -15,7 +15,7 @@ void describe('ServerContext with AsyncLocalStorage', () => {
   void it('should maintain context across async operations in HTTP handler', async () => {
     const results: string[] = [];
 
-    const testController = controller('test')
+    const testController = controller('/')
       .description('Test controller for context')
       .endpoints([
         get('/context-test', 'testContext').handler(async () => {
@@ -56,7 +56,7 @@ void describe('ServerContext with AsyncLocalStorage', () => {
         controllers: [testController],
       },
       {
-        port: 3011,
+        port: 3055,
       },
     );
 
@@ -66,7 +66,7 @@ void describe('ServerContext with AsyncLocalStorage', () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Make request to test endpoint
-    const response = await fetch('http://localhost:3011/context-test');
+    const response = await fetch('http://localhost:3055/context-test');
     const data = (await response.json()) as { success: boolean; results: string[] };
 
     assert.ok(response.ok, 'Response should be ok');
@@ -97,7 +97,7 @@ void describe('ServerContext with AsyncLocalStorage', () => {
   void it('should maintain separate contexts for concurrent requests', async () => {
     const results = new Map<string, string>();
 
-    const testController = controller('test')
+    const testController = controller('/')
       .description('Test controller for concurrent context')
       .endpoints([
         get('/concurrent/:id', 'testConcurrent').handler(async (_input, req) => {
@@ -122,7 +122,7 @@ void describe('ServerContext with AsyncLocalStorage', () => {
         controllers: [testController],
       },
       {
-        port: 3012,
+        port: 3056,
       },
     );
 
@@ -133,8 +133,8 @@ void describe('ServerContext with AsyncLocalStorage', () => {
 
     // Make concurrent requests
     const [response1, response2] = await Promise.all([
-      fetch('http://localhost:3012/concurrent/1'),
-      fetch('http://localhost:3012/concurrent/2'),
+      fetch('http://localhost:3056/concurrent/1'),
+      fetch('http://localhost:3056/concurrent/2'),
     ]);
 
     const data1 = (await response1.json()) as { id: string; contextPreserved: boolean };

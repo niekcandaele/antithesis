@@ -1,11 +1,55 @@
 import * as path from 'node:path';
-import { promises as fs } from 'node:fs';
+import { promises as fs, existsSync } from 'node:fs';
+import { Kysely, PostgresDialect, sql } from 'kysely';
+import { Pool } from 'pg';
 import { FileMigrationProvider, Migrator } from 'kysely';
-import { getDb } from './index.js';
+import type { Database } from './types.js';
 import { config } from '../config.js';
 import { logger } from '../logger.js';
 
 const log = logger('migrations');
+
+/**
+ * Get the migration folder path based on the environment
+ * - In development: uses TypeScript source files in src/db/migrations
+ * - In production: uses compiled JavaScript in dist/db/migrations
+ */
+function getMigrationFolder(): string {
+  const srcPath = path.join(process.cwd(), 'src/db/migrations');
+  const distPath = path.join(process.cwd(), 'dist/db/migrations');
+
+  // Check if we're running from compiled output (production)
+  // by checking if dist folder exists
+  if (existsSync(distPath)) {
+    return distPath;
+  }
+
+  return srcPath;
+}
+
+/**
+ * Create a database connection for migrations using admin credentials
+ *
+ * Migrations require elevated privileges to create/alter tables and RLS policies.
+ * Uses DB_ADMIN_USER if set, otherwise falls back to DB_USER.
+ *
+ * @returns Kysely database instance with admin privileges
+ */
+function getAdminDbForMigrations(): Kysely<Database> {
+  const pool = new Pool({
+    host: config.DB_HOST,
+    port: config.DB_PORT,
+    database: config.DB_NAME,
+    // Use admin credentials if available, otherwise fallback to regular credentials
+    user: config.DB_ADMIN_USER ?? config.DB_USER,
+    password: config.DB_ADMIN_PASSWORD ?? config.DB_PASSWORD,
+    max: 5, // Smaller pool for migrations
+  });
+
+  return new Kysely<Database>({
+    dialect: new PostgresDialect({ pool }),
+  });
+}
 
 /**
  * Run database migrations
@@ -56,43 +100,61 @@ const log = logger('migrations');
  * ```
  */
 export async function runMigrations(): Promise<void> {
-  const db = getDb();
+  // Use admin credentials for migrations (requires elevated privileges)
+  const db = getAdminDbForMigrations();
 
-  const migrator = new Migrator({
-    db,
-    provider: new FileMigrationProvider({
-      fs,
-      path,
-      migrationFolder: path.join(process.cwd(), 'src/db/migrations'),
-    }),
-  });
-
-  // In development, auto-run migrations
-  // In production, migrations must be run manually via npm run migrate
-  if (config.NODE_ENV === 'development') {
-    log.info('Running database migrations (auto-run in development)');
-
-    const { error, results } = await migrator.migrateToLatest();
-
-    results?.forEach((result) => {
-      if (result.status === 'Success') {
-        log.info(`Migration "${result.migrationName}" executed successfully`);
-      } else if (result.status === 'Error') {
-        log.error(`Migration "${result.migrationName}" failed`);
-      }
+  try {
+    const migrator = new Migrator({
+      db,
+      provider: new FileMigrationProvider({
+        fs,
+        path,
+        migrationFolder: getMigrationFolder(),
+      }),
     });
 
-    if (error) {
-      log.error('Failed to run migrations', { error });
-      // eslint-disable-next-line @typescript-eslint/only-throw-error
-      throw error;
-    }
+    // In development, auto-run migrations
+    // In production, migrations must be run manually via npm run migrate
+    if (config.NODE_ENV === 'development') {
+      log.info('Running database migrations (auto-run in development)');
 
-    log.info('Migrations complete');
-  } else {
-    log.info(
-      'Skipping auto-migration in production. Run migrations manually via `npm run migrate`',
-    );
+      const { error, results } = await migrator.migrateToLatest();
+
+      results?.forEach((result) => {
+        if (result.status === 'Success') {
+          log.info(`Migration "${result.migrationName}" executed successfully`);
+        } else if (result.status === 'Error') {
+          log.error(`Migration "${result.migrationName}" failed`);
+        }
+      });
+
+      if (error) {
+        log.error('Failed to run migrations', { error });
+        // eslint-disable-next-line @typescript-eslint/only-throw-error
+        throw error;
+      }
+
+      log.info('Migrations complete');
+
+      // Grant permissions to app user after migrations
+      if (config.DB_USER !== config.DB_ADMIN_USER) {
+        log.info(`Granting permissions to app user: ${config.DB_USER}`);
+        await sql`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${sql.ref(config.DB_USER)}`.execute(
+          db,
+        );
+        await sql`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${sql.ref(config.DB_USER)}`.execute(
+          db,
+        );
+        log.info('Permissions granted successfully');
+      }
+    } else {
+      log.info(
+        'Skipping auto-migration in production. Run migrations manually via `npm run migrate`',
+      );
+    }
+  } finally {
+    // Clean up admin connection
+    await db.destroy();
   }
 }
 
@@ -111,34 +173,52 @@ export async function runMigrations(): Promise<void> {
  * ```
  */
 export async function runMigrationsManually(): Promise<void> {
-  const db = getDb();
+  // Use admin credentials for migrations (requires elevated privileges)
+  const db = getAdminDbForMigrations();
 
-  const migrator = new Migrator({
-    db,
-    provider: new FileMigrationProvider({
-      fs,
-      path,
-      migrationFolder: path.join(process.cwd(), 'src/db/migrations'),
-    }),
-  });
+  try {
+    const migrator = new Migrator({
+      db,
+      provider: new FileMigrationProvider({
+        fs,
+        path,
+        migrationFolder: getMigrationFolder(),
+      }),
+    });
 
-  log.info('Running database migrations manually');
+    log.info('Running database migrations manually');
 
-  const { error, results } = await migrator.migrateToLatest();
+    const { error, results } = await migrator.migrateToLatest();
 
-  results?.forEach((result) => {
-    if (result.status === 'Success') {
-      log.info(`Migration "${result.migrationName}" executed successfully`);
-    } else if (result.status === 'Error') {
-      log.error(`Migration "${result.migrationName}" failed`);
+    results?.forEach((result) => {
+      if (result.status === 'Success') {
+        log.info(`Migration "${result.migrationName}" executed successfully`);
+      } else if (result.status === 'Error') {
+        log.error(`Migration "${result.migrationName}" failed`);
+      }
+    });
+
+    if (error) {
+      log.error('Failed to run migrations', { error });
+      // eslint-disable-next-line @typescript-eslint/only-throw-error
+      throw error;
     }
-  });
 
-  if (error) {
-    log.error('Failed to run migrations', { error });
-    // eslint-disable-next-line @typescript-eslint/only-throw-error
-    throw error;
+    log.info('Migrations complete');
+
+    // Grant permissions to app user after migrations
+    if (config.DB_USER !== config.DB_ADMIN_USER) {
+      log.info(`Granting permissions to app user: ${config.DB_USER}`);
+      await sql`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${sql.ref(config.DB_USER)}`.execute(
+        db,
+      );
+      await sql`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${sql.ref(config.DB_USER)}`.execute(
+        db,
+      );
+      log.info('Permissions granted successfully');
+    }
+  } finally {
+    // Clean up admin connection
+    await db.destroy();
   }
-
-  log.info('Migrations complete');
 }

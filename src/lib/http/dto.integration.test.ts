@@ -20,7 +20,7 @@ class UserDTO extends DTO<typeof UserSchema> {
 }
 
 // Test controller using DTO
-const testDtoController = controller('dto-test')
+const testDtoController = controller('/')
   .description('Test controller for DTO validation')
   .endpoints([
     post('/test-dto', 'createUser')
@@ -39,7 +39,7 @@ const testDtoController = controller('dto-test')
 
 void describe('DTO Integration Test', () => {
   let server: HTTP;
-  const port = 3051; // Use a unique test port
+  const port = 3053; // Use a unique test port
 
   before(() => {
     server = new HTTP(

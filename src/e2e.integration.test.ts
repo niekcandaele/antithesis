@@ -63,7 +63,7 @@ class TenantService extends TenantScoped {
 }
 
 // Test controller
-const e2eTestController = controller('e2e-test')
+const e2eTestController = controller('/')
   .description('E2E test controller')
   .endpoints([
     post('/e2e/tenants', 'createTenant')

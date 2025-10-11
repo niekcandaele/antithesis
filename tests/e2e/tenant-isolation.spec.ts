@@ -1,0 +1,238 @@
+import { randomUUID } from 'node:crypto';
+import { test as base, expect, type Page } from '@playwright/test';
+import { createKeycloakHelper, type KeycloakTestHelper } from '../helpers/keycloak.js';
+import { createDatabaseHelper, type DatabaseTestHelper } from '../helpers/database.js';
+
+/**
+ * Tenant Isolation E2E Tests
+ *
+ * Verify that tenant data is properly isolated:
+ * - User A cannot see User B's albums
+ * - User A cannot access User B's album by direct URL
+ * - User A cannot add photos to User B's albums
+ * - User A cannot access User B's photos
+ *
+ * Note: With auto-provisioning, each user gets their own personal tenant
+ * automatically on first login (e.g., "tenant-a-personal", "tenant-b-personal").
+ * No manual tenant/organization setup needed.
+ */
+
+interface TestUser {
+  email: string;
+  password: string;
+}
+
+interface TenantUsers {
+  userA: TestUser;
+  userB: TestUser;
+}
+
+function createTestUser(): TestUser {
+  return {
+    email: `test-${randomUUID().slice(0, 8)}@test.com`,
+    password: randomUUID(),
+  };
+}
+
+let keycloak: KeycloakTestHelper;
+let database: DatabaseTestHelper;
+
+// Extend Playwright test with tenantUsers fixture
+const test = base.extend<{ tenantUsers: TenantUsers }>({
+  tenantUsers: async ({}, use) => {
+    const userA = createTestUser();
+    const userB = createTestUser();
+    await keycloak.createUser(userA.email, userA.password);
+    await keycloak.createUser(userB.email, userB.password);
+    await use({ userA, userB });
+  },
+});
+
+test.describe('Tenant Isolation', () => {
+  test.beforeAll(async () => {
+    // Clean database before tests
+    database = createDatabaseHelper();
+    await database.cleanup();
+
+    keycloak = createKeycloakHelper();
+  });
+
+  test.afterAll(async () => {
+    // Cleanup test data
+    await keycloak.cleanup();
+    await database.close();
+  });
+
+  /**
+   * Helper function to login via the UI
+   * Handles Keycloak's single-page login form
+   */
+  async function loginViaUI(page: Page, user: TestUser) {
+    await page.goto('/auth/login');
+
+    // Fill both username and password (single-page Keycloak login form)
+    await page.fill('input[name="username"]', user.email);
+    await page.fill('input[name="password"]', user.password);
+
+    // Wait for button to be enabled and click
+    const signInButton = page.locator('button[type="submit"], input[type="submit"]');
+    await signInButton.waitFor({ state: 'visible', timeout: 10000 });
+    await signInButton.click();
+
+    // Wait for redirect back to app (callback or final destination)
+    await page.waitForURL(/\/callback|\/albums|\/dashboard/, { timeout: 30000 });
+  }
+
+  test('User A creates album - visible to A only', async ({ page, tenantUsers }) => {
+    // Login as User A
+    await loginViaUI(page, tenantUsers.userA);
+
+    // Navigate to albums page
+    await page.goto('/albums');
+
+    // Create an album
+    await page.click('a[href="/albums/new"]');
+    await page.fill('input[name="name"]', 'User A Test Album');
+    await page.fill('textarea[name="description"]', 'This album belongs to User A');
+    await page.click('button[type="submit"]');
+
+    // Verify album appears in list
+    await page.goto('/albums');
+    await expect(page.locator('text=User A Test Album')).toBeVisible();
+  });
+
+  test('User B cannot see User A album', async ({ page, tenantUsers }) => {
+    // First, login as User A and create an album
+    await loginViaUI(page, tenantUsers.userA);
+    await page.goto('/albums');
+    await page.click('a[href="/albums/new"]');
+    await page.fill('input[name="name"]', 'User A Test Album');
+    await page.fill('textarea[name="description"]', 'This album belongs to User A');
+    await page.click('button[type="submit"]');
+    await page.waitForURL(/\/albums\/[a-f0-9-]+/);
+
+    // Logout and login as User B
+    await page.goto('/auth/logout');
+    await page.waitForLoadState('networkidle');
+    await page.context().clearCookies();
+    await page.waitForTimeout(500);
+
+    await loginViaUI(page, tenantUsers.userB);
+
+    // Navigate to albums page
+    await page.goto('/albums');
+
+    // Verify User A's album is NOT visible
+    await expect(page.locator('text=User A Test Album')).not.toBeVisible();
+  });
+
+  test('User B cannot access User A album by direct URL', async ({ page, tenantUsers }) => {
+    // First, login as User A and create an album, capturing its ID
+    await loginViaUI(page, tenantUsers.userA);
+    await page.goto('/albums');
+
+    // Create an album and get its ID from the URL after creation
+    await page.click('a[href="/albums/new"]');
+    await page.fill('input[name="name"]', 'Protected Album');
+    await page.click('button[type="submit"]');
+    await page.waitForURL(/\/albums\/[a-f0-9-]+/);
+
+    const albumUrl = page.url();
+    const albumId = albumUrl.split('/albums/')[1];
+
+    // Logout User A
+    await page.goto('/auth/logout');
+    await page.waitForLoadState('networkidle');
+    // Clear cookies to ensure complete logout
+    await page.context().clearCookies();
+    await page.waitForTimeout(500);
+
+    // Login as User B
+    await loginViaUI(page, tenantUsers.userB);
+
+    // Attempt to access User A's album by direct URL
+    await page.goto(`/albums/${albumId}`);
+
+    // Should get 404 or error page, NOT the album details
+    await expect(page.locator('text=Protected Album')).not.toBeVisible();
+    // Verify we see an error message or 404 (target heading to avoid strict mode)
+    await expect(
+      page.locator('h1, h2').filter({ hasText: /Not Found|Forbidden|Access Denied/i }),
+    ).toBeVisible();
+  });
+
+  test('User A cannot add photos to User B album', async ({ page, tenantUsers }) => {
+    // Login as User B and create an album
+    await loginViaUI(page, tenantUsers.userB);
+    await page.goto('/albums');
+    await page.click('a[href="/albums/new"]');
+    await page.fill('input[name="name"]', 'User B Album');
+    await page.click('button[type="submit"]');
+    await page.waitForURL(/\/albums\/[a-f0-9-]+/);
+
+    const userBAlbumUrl = page.url();
+    const userBAlbumId = userBAlbumUrl.split('/albums/')[1];
+
+    // Logout User B
+    await page.goto('/auth/logout');
+    await page.waitForLoadState('networkidle');
+    // Clear cookies to ensure complete logout
+    await page.context().clearCookies();
+    await page.waitForTimeout(500);
+
+    // Login as User A
+    await loginViaUI(page, tenantUsers.userA);
+
+    // Attempt to add a photo to User B's album via direct URL
+    await page.goto(`/albums/${userBAlbumId}/photos/new`);
+
+    // Should get error, not the photo upload form
+    await expect(
+      page.locator('text=/Cannot GET|Not Found|Forbidden|Access Denied/i'),
+    ).toBeVisible();
+  });
+
+  test('User A cannot access User B photos', async ({ page, tenantUsers }) => {
+    // Login as User B and create an album with a photo
+    await loginViaUI(page, tenantUsers.userB);
+    await page.goto('/albums');
+    await page.click('a[href="/albums/new"]');
+    await page.fill('input[name="name"]', 'User B Photo Album');
+    await page.click('button[type="submit"]');
+    await page.waitForURL(/\/albums\/[a-f0-9-]+/);
+
+    // Add a photo to the album
+    await page.click('a[href*="/photos/new"]');
+    await page.fill('input[name="title"]', 'User B Photo');
+    await page.fill('input[name="url"]', 'https://example.com/photo-b.jpg');
+    await page.click('button[type="submit"]');
+
+    // Wait for redirect back to album detail page (photos redirect to album, not to photo detail)
+    await page.waitForURL(/\/albums\/[a-f0-9-]+/);
+
+    // Find the photo edit link to extract photo ID
+    const photoEditLink = await page.locator('a[href*="/photos/"][href*="/edit"]').first();
+    const editHref = await photoEditLink.getAttribute('href');
+    const photoId = editHref?.split('/photos/')[1]?.split('/')[0];
+
+    // Logout User B
+    await page.goto('/auth/logout');
+    await page.waitForLoadState('networkidle');
+    // Clear cookies to ensure complete logout
+    await page.context().clearCookies();
+    await page.waitForTimeout(500);
+
+    // Login as User A
+    await loginViaUI(page, tenantUsers.userA);
+
+    // Attempt to access User B's photo by direct URL
+    await page.goto(`/photos/${photoId}`);
+
+    // Should get error, not the photo details
+    await expect(page.locator('text=User B Photo')).not.toBeVisible();
+    // Verify error message (target heading to avoid strict mode)
+    await expect(
+      page.locator('h1, h2').filter({ hasText: /Not Found|Forbidden|Access Denied/i }),
+    ).toBeVisible();
+  });
+});

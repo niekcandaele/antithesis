@@ -1,0 +1,85 @@
+services:
+  postgres:
+    image: postgres:17.4
+    ports:
+      - '15432:5432'
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      APP_DB_USER: antithesis_app
+      APP_DB_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./infra/postgres-init.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    command: start-dev
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      KC_DB_USERNAME: ${POSTGRES_USER}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+    ports:
+      - '8080:8080'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  app:
+    image: ghcr.io/${GITHUB_REPOSITORY}:${DOCKER_TAG}
+    container_name: antithesis_app
+    environment:
+      NODE_ENV: test
+      PUBLIC_API_PORT: 3000
+      ADMIN_API_PORT: 3001
+      META_API_PORT: 3002
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: antithesis_app
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_ADMIN_USER: ${POSTGRES_USER}
+      DB_ADMIN_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_PUBLIC_URL: http://127.0.0.1:8080
+      KEYCLOAK_REALM: antithesis
+      KEYCLOAK_CLIENT_ID: antithesis-app
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      KEYCLOAK_ALLOW_HTTP: ${KEYCLOAK_ALLOW_HTTP}
+      PUBLIC_API_URL: http://127.0.0.1:13000
+      ADMIN_API_URL: http://127.0.0.1:13001
+      META_API_URL: http://127.0.0.1:13002
+      SESSION_SECRET: ${SESSION_SECRET}
+      LOG_LEVEL: debug
+    ports:
+      - '13000:3000'
+      - '13001:3001'
+      - '13002:3002'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q --spider http://localhost:3002/healthz || exit 1']
+      interval: 5s
+      timeout: 5s
+      retries: 30

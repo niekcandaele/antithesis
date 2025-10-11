@@ -1,6 +1,10 @@
 import { z } from 'zod';
+import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
 
 import * as errors from './errors.js';
+
+// Extend Zod with OpenAPI support
+extendZodWithOpenApi(z);
 
 interface IApiResponseOptions {
   error?: Error | errors.HttpError;
@@ -34,15 +38,19 @@ export function apiResponse<DataType = unknown>(data: DataType, opts?: IApiRespo
   };
 }
 
-const zErrorOutput = z.object({
-  code: z.string(),
-  details: z.any(),
-});
+const zErrorOutput = z
+  .object({
+    code: z.string(),
+    details: z.any(),
+  })
+  .openapi('ApiError');
 
-const zMetaDataOutput = z.object({
-  serverTime: z.string().datetime(),
-  error: zErrorOutput.optional(),
-});
+const zMetaDataOutput = z
+  .object({
+    serverTime: z.string().datetime(),
+    error: zErrorOutput.optional(),
+  })
+  .openapi('ApiMeta');
 
 /**
  * Schema wrapper for a default api output schema
@@ -69,10 +77,12 @@ const zMetaDataOutput = z.object({
  * ```
  */
 export const zApiOutput = <OutputSchema extends z.ZodSchema>(dataSchema: OutputSchema) =>
-  z.object({
-    meta: zMetaDataOutput,
-    data: dataSchema,
-  });
+  z
+    .object({
+      meta: zMetaDataOutput,
+      data: dataSchema,
+    })
+    .openapi('ApiResponse');
 
 // @ts-expect-error - keep for reference but not actively used
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

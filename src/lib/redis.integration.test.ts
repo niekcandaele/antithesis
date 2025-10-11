@@ -1,4 +1,4 @@
-import { describe, it, beforeEach, afterEach, before } from 'node:test';
+import { describe, it, beforeEach, before, after } from 'node:test';
 import assert from 'node:assert';
 import { RedisContainer, StartedRedisContainer } from '@testcontainers/redis';
 import { createClient, RedisClientType } from 'redis';
@@ -19,8 +19,9 @@ describe('Redis Integration Tests', () => {
     };
   });
 
-  beforeEach(async () => {
-    // Start a fresh Redis container for each test
+  before(async () => {
+    // Start a single Redis container shared across all tests
+    // This significantly reduces test execution time by avoiding container overhead
     container = await new RedisContainer('redis:7.4-alpine').start();
 
     // Override environment to point to test container
@@ -41,7 +42,29 @@ describe('Redis Integration Tests', () => {
     await inspectorClient.connect();
   });
 
-  afterEach(async () => {
+  beforeEach(async () => {
+    // Flush all data between tests to ensure isolation
+    await inspectorClient.flushAll();
+
+    // Clean up health hooks from previous tests
+    const hookNames = [
+      'redis:test',
+      'redis:session-store',
+      'redis:cache',
+      'redis:client1',
+      'redis:client2',
+      'redis:new-client',
+      'redis:tenant-123:cache',
+      'redis:tenant-456:cache',
+    ];
+
+    hookNames.forEach((name) => {
+      health.unregisterReadinessHook(name);
+    });
+  });
+
+  after(async () => {
+    // Clean up after all tests complete
     await Redis.destroy();
     await inspectorClient.quit();
     await container.stop();

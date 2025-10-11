@@ -42,12 +42,23 @@ export abstract class DTO<TSchema extends z.ZodTypeAny> {
     this.schema = schema;
 
     if (data) {
-      Object.assign(this, data);
-    }
-
-    // Auto-validate if enabled
-    if (config.DTO_AUTO_VALIDATE) {
-      this.validate();
+      if (config.DTO_AUTO_VALIDATE) {
+        // Parse and validate data, then assign the parsed result
+        // This ensures defaults, transformations, and preprocessing are applied
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          const parsed = this.schema.parse(data);
+          Object.assign(this, parsed);
+        } catch (error) {
+          if (error instanceof Error) {
+            throw new ValidationError(error.message, (error as { issues?: unknown }).issues);
+          }
+          throw error;
+        }
+      } else {
+        // If validation is disabled, assign raw data
+        Object.assign(this, data);
+      }
     }
   }
 

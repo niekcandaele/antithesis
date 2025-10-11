@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "postgres": {
+      "command": "postgres-mcp",
+      "args": ["--access-mode=unrestricted"],
+      "env": {
+        "DATABASE_URI": "postgresql://antithesis:antithesis@localhost:5432/antithesis"
+      }
+    },
+    "redis": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--with",
+        "redis-mcp-server",
+        "redis-mcp-server",
+        "--url",
+        "redis://localhost:6379/0"
+      ]
+    }
+  }
+}

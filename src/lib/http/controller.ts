@@ -2,6 +2,7 @@ import { type Application } from 'express';
 
 import { type AnyEndpoint, type Endpoint, endpointToExpressHandler } from './endpoint.js';
 import { Middleware, MiddlewareTypes } from './middleware.js';
+import { joinPaths } from './pathUtils.js';
 
 interface ControllerOptions {
   name?: string;
@@ -77,8 +78,10 @@ export const bindControllerToApp = (_controller: Controller, app: Application) =
     .filter((m) => m.type === MiddlewareTypes.AFTER);
 
   _controller.getEndpoints().forEach((endpoint) => {
+    const fullPath = joinPaths(_controller.getName() ?? '/', endpoint.getPath());
+
     app[endpoint.getMethod()](
-      endpoint.getPath(),
+      fullPath,
       // Controller before middleware
       ...controllerBeforeMiddlewares.map((m) => m.handler),
 

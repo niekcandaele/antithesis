@@ -10,6 +10,11 @@
     </a>
   </li>
   <li>
+    <a href="/albums" class="<%= typeof route !== 'undefined' && route.startsWith('/albums') ? 'active' : '' %>">
+      Albums
+    </a>
+  </li>
+  <li>
     <a href="/about" class="<%= typeof route !== 'undefined' && route === '/about' ? 'active' : '' %>">
       About
     </a>

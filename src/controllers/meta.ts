@@ -7,7 +7,7 @@ import { controller, get, getServerContext } from '../lib/http/index.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-export const metaController = controller('meta')
+export const metaController = controller('/')
   .description('API metadata and documentation endpoints')
   .endpoints([
     get('/openapi.json', 'getOpenAPISpec')

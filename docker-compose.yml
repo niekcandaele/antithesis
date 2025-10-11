@@ -3,14 +3,17 @@ services:
     image: postgres:17.4
     environment:
       POSTGRES_DB: antithesis
-      POSTGRES_USER: antithesis
+      POSTGRES_USER: postgres # Bootstrap superuser for migrations/admin
       POSTGRES_PASSWORD: antithesis
+      APP_DB_USER: antithesis_app # Non-superuser for application (RLS enforcement)
+      APP_DB_PASSWORD: antithesis
     ports:
       - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres-init.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U antithesis']
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -27,19 +30,64 @@ services:
       timeout: 3s
       retries: 5
 
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    command: start-dev
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/antithesis
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: antithesis
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - '8080:8080'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'exec 3<>/dev/tcp/127.0.0.1/8080 && echo -e "GET /realms/master HTTP/1.1\r\nHost: localhost:8080\r\nConnection: close\r\n\r\n" >&3 && cat <&3 | head -1 | grep "HTTP/1.1"',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  keycloak-init:
+    image: alpine:3.21
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KEYCLOAK_CLIENT_SECRET: dev-secret-change-in-production
+    volumes:
+      - ./infra/keycloak-init.sh:/scripts/keycloak-init.sh:ro
+    command: >
+      sh -c "apk add --no-cache bash curl jq && bash /scripts/keycloak-init.sh"
+    restart: 'no'
+
   app:
     build:
       context: .
       dockerfile: Dockerfile.dev
+    env_file: .env
     volumes:
       - ./src:/app/src
       - ./views:/app/views
       - ./public:/app/public
+      - ./tests:/app/tests
       - ./tsconfig.json:/app/tsconfig.json
       - ./package.json:/app/package.json
       - ./eslint.config.js:/app/eslint.config.js
       - ./tailwind.config.js:/app/tailwind.config.js
       - ./postcss.config.js:/app/postcss.config.js
+      - ./playwright.config.ts:/app/playwright.config.ts
+      - ./tsconfig.playwright.json:/app/tsconfig.playwright.json
       - ./.env:/app/.env
       # Prevent node_modules from being overridden
       - /app/node_modules
@@ -52,13 +100,27 @@ services:
       - PUBLIC_API_PORT=3000
       - ADMIN_API_PORT=3001
       - META_API_PORT=3002
+      - PUBLIC_API_URL=http://localhost:3000
+      - ADMIN_API_URL=http://localhost:3001
+      - META_API_URL=http://localhost:3002
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=antithesis
-      - DB_USER=antithesis
+      - DB_USER=antithesis_app # Application user (non-superuser)
       - DB_PASSWORD=antithesis
+      - DB_ADMIN_USER=postgres # Admin user for migrations
+      - DB_ADMIN_PASSWORD=antithesis
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - KEYCLOAK_URL=http://keycloak:8080
+      - KEYCLOAK_PUBLIC_URL=http://localhost:8080
+      - KEYCLOAK_REALM=antithesis
+      - KEYCLOAK_CLIENT_ID=antithesis-app
+      - KEYCLOAK_CLIENT_SECRET=dev-secret-change-in-production
+      - KEYCLOAK_ALLOW_HTTP=true
+      - KEYCLOAK_ADMIN_USER=admin # Admin user for Keycloak test helpers
+      - KEYCLOAK_ADMIN_PASSWORD=admin # Admin password for Keycloak test helpers
+      - SESSION_SECRET=dev-session-secret-change-in-production
     stdin_open: true
     tty: true
     depends_on:
@@ -66,6 +128,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      keycloak-init:
+        condition: service_completed_successfully
 
 volumes:
   postgres_data:

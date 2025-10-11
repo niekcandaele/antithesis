@@ -12,6 +12,45 @@ export type Generated<T> =
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
+export interface Albums {
+  coverPhotoUrl: string | null;
+  createdAt: Generated<Timestamp>;
+  createdByUserId: string;
+  deletedAt: Timestamp | null;
+  deletedByUserId: string | null;
+  description: string | null;
+  id: Generated<string>;
+  isDeleted: Generated<boolean>;
+  name: string;
+  status: Generated<string>;
+  tenantId: string;
+  updatedAt: Generated<Timestamp>;
+}
+
+export interface Photos {
+  albumId: string;
+  createdAt: Generated<Timestamp>;
+  createdByUserId: string;
+  deletedAt: Timestamp | null;
+  deletedByUserId: string | null;
+  description: string | null;
+  id: Generated<string>;
+  isDeleted: Generated<boolean>;
+  status: Generated<string>;
+  tenantId: string;
+  thumbnailUrl: string | null;
+  title: string;
+  updatedAt: Generated<Timestamp>;
+  url: string;
+}
+
+export interface Roles {
+  createdAt: Generated<Timestamp>;
+  id: Generated<string>;
+  name: string;
+  updatedAt: Generated<Timestamp>;
+}
+
 export interface Tenants {
   createdAt: Generated<Timestamp>;
   externalReferenceId: string | null;
@@ -21,12 +60,37 @@ export interface Tenants {
   updatedAt: Generated<Timestamp>;
 }
 
-export interface DB {
-  tenants: Tenants;
+export interface UserRoles {
+  createdAt: Generated<Timestamp>;
+  roleId: string;
+  tenantId: string;
+  userId: string;
 }
 
-/**
- * Database schema type alias
- * Alias for DB interface to match common naming convention
- */
+export interface Users {
+  createdAt: Generated<Timestamp>;
+  email: string;
+  id: Generated<string>;
+  keycloakUserId: string;
+  lastTenantId: string | null;
+  updatedAt: Generated<Timestamp>;
+}
+
+export interface UserTenants {
+  createdAt: Generated<Timestamp>;
+  tenantId: string;
+  userId: string;
+}
+
+export interface DB {
+  albums: Albums;
+  photos: Photos;
+  roles: Roles;
+  tenants: Tenants;
+  user_roles: UserRoles;
+  user_tenants: UserTenants;
+  users: Users;
+}
+
+// Backward compatibility alias
 export type Database = DB;

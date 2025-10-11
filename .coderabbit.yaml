@@ -1,9 +1,8 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
-# Enterprise configuration with comprehensive settings
-language: "en-US"
-tone_instructions: "Be thorough and focus on security and maintainability"
+language: 'en-US'
+tone_instructions: 'Be thorough and focus on security and maintainability'
 reviews:
-  profile: "assertive"
+  profile: 'chill'
   high_level_summary: true
   suggested_reviewers: true
   auto_assign_reviewers: true
@@ -11,15 +10,15 @@ auto_review:
   enabled: true
   drafts: false
   labels:
-    - "feature"
-    - "bugfix"
-    - "!wip"
+    - 'feature'
+    - 'bugfix'
+    - '!wip'
   path_filters:
-    - "!node_modules/**"
-    - "!dist/**"
-    - "!build/**"
-    - "src/**"
-    - "tests/**"
+    - '!node_modules/**'
+    - '!dist/**'
+    - '!build/**'
+    - 'src/**'
+    - 'tests/**'
 tools:
   gitleaks:
     enabled: true
@@ -33,7 +32,7 @@ tools:
     enabled: true
   golangci-lint:
     enabled: true
-    config_file: ".golangci.yml"
+    config_file: '.golangci.yml'
   hadolint:
     enabled: true
   yamllint:
@@ -47,29 +46,20 @@ finishing_touches:
     enabled: true
 pre_merge_checks:
   title:
-    mode: "error"
-    requirements: "Title should be concise and descriptive"
+    mode: 'error'
+    requirements: 'Title should be concise and descriptive'
   description:
-    mode: "warning"
+    mode: 'warning'
   docstrings:
-    mode: "warning"
+    mode: 'warning'
     threshold: 80
 chat:
   auto_reply: true
-integrations:
-  jira:
-    usage: "enabled"
-  linear:
-    usage: "enabled"
 knowledge_base:
   code_guidelines:
     enabled: true
     filePatterns:
-      - "**/.cursorrules"
-      - ".github/copilot-instructions.md"
-      - "**/CLAUDE.md"
-      - "**/CODING_STANDARDS.md"
-learnings:
-  scope: "global"
-issues:
-  scope: "global"
+      - '**/.cursorrules'
+      - '.github/copilot-instructions.md'
+      - '**/CLAUDE.md'
+      - '**/CODING_STANDARDS.md'

@@ -102,6 +102,7 @@ export class TenantService {
       throw new ConflictError('Tenant with this slug already exists');
     }
 
+    // Create local tenant only (no Keycloak dependency)
     const created = await tenantRepository.create(data);
     return this.mapToPlain(created);
   }

@@ -7,6 +7,7 @@ import z from 'zod';
 
 import { Controller } from './controller.js';
 import { Endpoint } from './endpoint.js';
+import { joinPaths } from './pathUtils.js';
 
 extendZodWithOpenApi(z);
 
@@ -22,6 +23,34 @@ function pathToTitle(input: string): string {
       // Join the words back together.
       .join('')
   );
+}
+
+/**
+ * Normalize controller name into a consistent OpenAPI tag for grouping
+ * @example
+ * normalizeTag('/albums') → 'Albums'
+ * normalizeTag('albums') → 'Albums'
+ * normalizeTag('albums/:albumId/photos') → 'Albums'
+ * normalizeTag('/auth') → 'Auth'
+ * normalizeTag('/') → '/'
+ */
+function normalizeTag(controllerName: string | undefined): string | undefined {
+  if (!controllerName) return undefined;
+
+  // Keep root as-is
+  if (controllerName === '/') return '/';
+
+  // Remove leading slash
+  const withoutLeadingSlash = controllerName.startsWith('/')
+    ? controllerName.slice(1)
+    : controllerName;
+
+  // Extract base resource from nested paths like 'albums/:albumId/photos' → 'albums'
+  // Split on '/' and take the first segment
+  const baseResource = withoutLeadingSlash.split('/')[0];
+
+  // Capitalize first letter
+  return baseResource.charAt(0).toUpperCase() + baseResource.slice(1);
 }
 
 export type OASInfo = Partial<Parameters<OpenApiGeneratorV3['generateDocument']>[0]['info']>;
@@ -52,34 +81,54 @@ export class Oas {
       }
     });
 
-    // Create tag and description
-    const name = controller.getName();
+    // Create tag and description using normalized tag name
+    const controllerName = controller.getName();
     const description = controller.getDescription();
-    if (name == null) {
+    if (controllerName == null) {
       return;
     }
-    const tagObj = this.tags.find((t) => t.name === name);
+
+    // Normalize the tag name for consistent grouping
+    const normalizedTag = normalizeTag(controllerName);
+    if (normalizedTag == null) {
+      return;
+    }
+
+    // Find existing tag or create new one
+    const tagObj = this.tags.find((t) => t.name === normalizedTag);
     if (!tagObj) {
       this.tags.push({
-        name,
+        name: normalizedTag,
         description,
       });
     } else {
-      tagObj.description = description;
+      // Merge descriptions - prefer non-empty ones, or append if both have content
+      if (description && !tagObj.description) {
+        tagObj.description = description;
+      } else if (description && tagObj.description && description !== tagObj.description) {
+        // If both have different descriptions, keep the more detailed one
+        if (description.length > tagObj.description.length) {
+          tagObj.description = description;
+        }
+      }
     }
   }
 
   private addEndpoint(endpoint: Endpoint, controllerName?: string) {
     const name = endpoint.getName();
     const backupName = `${endpoint.getMethod().toLowerCase()}${pathToTitle(endpoint.getPath())}`;
+    // Construct full path by joining controller name with endpoint path
+    const fullPath = joinPaths(controllerName ?? '/', endpoint.getPath());
+    // Normalize controller name to create consistent tag grouping
+    const tag = normalizeTag(controllerName);
     this.registry.registerPath({
       operationId: `${controllerName != null ? `${controllerName}.` : ''}${name ?? backupName}`,
       summary: name,
       description: endpoint.getDescription(),
       method: endpoint.getMethod(),
       // Turn express paths into oas paths (path param conversion)
-      path: endpoint.getPath().replace(/:(\w+)/g, '{$1}'),
-      tags: controllerName != null ? [controllerName] : undefined,
+      path: fullPath.replace(/:(\w+)/g, '{$1}'),
+      tags: tag != null ? [tag] : undefined,
       request: {
         params: endpoint.getInputValidationSchema()?.shape.params,
         query: endpoint.getInputValidationSchema()?.shape.query,

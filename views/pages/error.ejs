@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Error <%= status %> - antithesis</title>
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+  <%- include('../partials/header') %>
+
+  <main class="container mx-auto px-4 py-8">
+    <div class="max-w-2xl mx-auto text-center space-y-6">
+      <h1 class="text-6xl font-bold"><%= status %></h1>
+
+      <% if (status === 403) { %>
+        <h2 class="text-2xl">Access Forbidden</h2>
+        <p class="text-lg opacity-70">You don't have permission to access this resource.</p>
+      <% } else if (status === 404) { %>
+        <h2 class="text-2xl">Not Found</h2>
+        <p class="text-lg opacity-70">The page or resource you're looking for doesn't exist.</p>
+      <% } else if (status === 500) { %>
+        <h2 class="text-2xl">Server Error</h2>
+        <p class="text-lg opacity-70">Something went wrong on our end. Please try again later.</p>
+      <% } else { %>
+        <h2 class="text-2xl">Error</h2>
+        <p class="text-lg opacity-70"><%= message || 'An error occurred' %></p>
+      <% } %>
+
+      <% if (details) { %>
+        <div class="alert alert-error">
+          <div class="flex flex-col items-start text-left">
+            <div class="flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span class="font-bold">Development Mode - Error Details</span>
+            </div>
+            <pre class="text-xs mt-2 whitespace-pre-wrap text-left"><%= details %></pre>
+          </div>
+        </div>
+      <% } %>
+
+      <div class="flex gap-4 justify-center">
+        <a href="/" class="btn btn-primary">Go Home</a>
+        <button onclick="window.history.back()" class="btn btn-ghost">Go Back</button>
+      </div>
+    </div>
+  </main>
+
+  <%- include('../partials/footer') %>
+</body>
+</html>
