@@ -159,6 +159,8 @@ async function main() {
       DB_NAME: process.env.POSTGRES_DB,
       DB_USER: process.env.POSTGRES_USER,
       DB_PASSWORD: POSTGRES_PASSWORD,
+      DB_ADMIN_USER: process.env.POSTGRES_USER,
+      DB_ADMIN_PASSWORD: POSTGRES_PASSWORD,
 
       // API URLs for tests
       PUBLIC_API_URL: 'http://127.0.0.1:13000',
