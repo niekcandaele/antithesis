@@ -114,14 +114,12 @@ test.describe('Frontend Migration - htmx Integration', () => {
   test('htmx pagination - Load More button', async ({ page, testUser }) => {
     await loginViaUI(page, testUser);
 
-    // Create 25 test albums to trigger pagination (button appears at 20+)
-    for (let i = 0; i < 25; i++) {
-      await page.goto('/albums/new');
-      await page.fill('input[name="name"]', `Pagination Test Album ${i + 1}`);
-      await page.click('button[type="submit"]');
-      // Wait for success (either notification or redirect)
-      await page.waitForTimeout(500);
-    }
+    // Get user info for seeding
+    const userInfo = await database.getUserInfo(testUser.email);
+    if (!userInfo) throw new Error('User not found after login');
+
+    // Seed 25 test albums directly in database (much faster than UI automation)
+    await database.seedAlbums(25, 'Pagination Test Album', userInfo.tenantId, userInfo.userId);
 
     // Navigate to albums list
     await page.goto('/albums');
@@ -150,8 +148,11 @@ test.describe('Frontend Migration - htmx Integration', () => {
     expect(htmxPaginationRequest.headers()['hx-request']).toBe('true');
     expect(htmxPaginationRequest.url()).toContain('page=2');
 
-    // Wait for new albums to be appended
-    await page.waitForTimeout(1000);
+    // Wait for new albums to be appended by waiting for album count to increase
+    await expect(async () => {
+      const currentCount = await page.locator('#album-list .column').count();
+      expect(currentCount).toBeGreaterThan(initialAlbums);
+    }).toPass({ timeout: 5000 });
 
     // Count albums after loading more
     const finalAlbums = await page.locator('#album-list .column').count();
@@ -188,7 +189,11 @@ test.describe('Frontend Migration - htmx Integration', () => {
   test('htmx live search filtering', async ({ page, testUser }) => {
     await loginViaUI(page, testUser);
 
-    // Create test albums with distinct names
+    // Get user info for seeding
+    const userInfo = await database.getUserInfo(testUser.email);
+    if (!userInfo) throw new Error('User not found after login');
+
+    // Seed test albums directly in database (much faster than UI automation)
     const testAlbums = [
       'Apple Album',
       'Banana Album',
@@ -196,13 +201,7 @@ test.describe('Frontend Migration - htmx Integration', () => {
       'Apple Pie Album',
       'Grape Album',
     ];
-
-    for (const albumName of testAlbums) {
-      await page.goto('/albums/new');
-      await page.fill('input[name="name"]', albumName);
-      await page.click('button[type="submit"]');
-      await page.waitForTimeout(500);
-    }
+    await database.seedAlbumsWithNames(testAlbums, userInfo.tenantId, userInfo.userId);
 
     // Navigate to albums list
     await page.goto('/albums');
@@ -237,11 +236,10 @@ test.describe('Frontend Migration - htmx Integration', () => {
     const htmxSearchRequest = await htmxSearchPromise;
     expect(htmxSearchRequest.headers()['hx-request']).toBe('true');
 
-    // Wait for search results to update (debounce + network)
-    await page.waitForTimeout(1000);
+    // Wait for search results to update by waiting for expected content to appear
+    await expect(page.locator('#album-list')).toContainText('Apple Album', { timeout: 5000 });
 
     // Verify filtered results (should show only albums with "Apple" in name)
-    await expect(page.locator('#album-list')).toContainText('Apple Album');
     await expect(page.locator('#album-list')).toContainText('Apple Pie Album');
 
     // Verify non-matching albums are not visible
@@ -264,8 +262,8 @@ test.describe('Frontend Migration - htmx Integration', () => {
     // Wait for clear search request
     await htmxClearSearchPromise;
 
-    // Wait for results to restore
-    await page.waitForTimeout(1000);
+    // Wait for results to restore by waiting for non-Apple albums to reappear
+    await expect(page.locator('#album-list')).toContainText('Banana Album', { timeout: 5000 });
 
     // Verify all albums are visible again
     const finalCount = await page.locator('#album-list .column').count();

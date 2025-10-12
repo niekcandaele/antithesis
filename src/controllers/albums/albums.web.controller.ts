@@ -6,7 +6,7 @@ import { albumsService } from '../../services/albums.service.js';
 import { photosService } from '../../services/photos.service.js';
 import { CreateAlbumDTO, UpdateAlbumDTO } from './albums.dto.js';
 import { ZodError, type ZodIssue } from 'zod';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { ValidationError } from '../../lib/http/errors.js';
 
 /**
@@ -36,8 +36,8 @@ function formatValidationErrors(error: unknown): string {
 async function renderPartial(res: Response, view: string, data: object): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     res.render(view, data, (err, html) => {
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (err !== null && err !== undefined) {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Express types are wrong, err can be null at runtime
+      if (err) {
         reject(err);
         return;
       }
@@ -45,6 +45,21 @@ async function renderPartial(res: Response, view: string, data: object): Promise
       resolve();
     });
   });
+}
+
+/**
+ * Handle errors for htmx requests with proper status codes and error messages
+ * For non-htmx requests, rethrows the error
+ */
+async function handleFormError(req: Request, res: Response, error: unknown): Promise<void> {
+  if (isHtmxRequest(req)) {
+    res.status(422);
+    await renderPartial(res, 'partials/alert-error', {
+      message: formatValidationErrors(error),
+    });
+    return;
+  }
+  throw error;
 }
 
 /**
@@ -125,8 +140,8 @@ export const albumsWebController = controller('/albums').endpoints([
       const fragmentsPromises = albums.map(async (album) => {
         return new Promise<string>((resolve, reject) => {
           app.render('partials/album-list-item', { album }, (err, html) => {
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-            if (err !== null && err !== undefined) {
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Express types are wrong, err can be null at runtime
+            if (err) {
               reject(err);
               return;
             }
@@ -230,16 +245,7 @@ export const albumsWebController = controller('/albums').endpoints([
 
         res.redirect(`/albums/${album.id}`);
       } catch (error) {
-        // Handle validation errors
-        if (isHtmxRequest(req)) {
-          // Return 422 status for validation errors (htmx configured to handle this)
-          res.status(422);
-          await renderPartial(res, 'partials/alert-error', {
-            message: formatValidationErrors(error),
-          });
-          return;
-        }
-        throw error;
+        await handleFormError(req, res, error);
       }
     }),
 
@@ -269,16 +275,7 @@ export const albumsWebController = controller('/albums').endpoints([
 
         res.redirect(`/albums/${albumId}`);
       } catch (error) {
-        // Handle validation errors
-        if (isHtmxRequest(req)) {
-          // Return 422 status for validation errors (htmx configured to handle this)
-          res.status(422);
-          await renderPartial(res, 'partials/alert-error', {
-            message: formatValidationErrors(error),
-          });
-          return;
-        }
-        throw error;
+        await handleFormError(req, res, error);
       }
     }),
 

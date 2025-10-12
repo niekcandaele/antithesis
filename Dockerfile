@@ -7,7 +7,6 @@ COPY package*.json ./
 RUN npm ci
 
 COPY tsconfig.json ./
-COPY tailwind.config.js ./
 COPY postcss.config.js ./
 COPY src ./src
 COPY views ./views
