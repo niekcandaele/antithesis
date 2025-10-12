@@ -1,0 +1,42 @@
+<%#
+  Phase 7: htmx Template Fragment - Album List Item
+
+  This partial is created in Phase 7 for htmx dynamic loading (pagination, search).
+  Integration with controllers happens in Phase 8.
+
+  Expected data: { album: Album } where Album includes:
+    - id, name, description, status, coverPhotoUrl, isDeleted
+%>
+<div class="box <%= album && album.isDeleted ? 'album-deleted' : '' %>">
+    <% if (album && album.coverPhotoUrl) { %>
+      <figure class="image is-16by9">
+        <img src="<%= album.coverPhotoUrl %>" alt="<%= album.name %>" class="album-cover-image" />
+      </figure>
+    <% } else { %>
+      <figure class="image is-16by9 album-placeholder">
+        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="album-placeholder-icon">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      </figure>
+    <% } %>
+    <div class="content mt-4">
+      <p class="title is-5">
+        <%= album && album.name ? album.name : 'Untitled' %>
+        <span class="tag <%= album.status === 'published' ? 'is-success' : album.status === 'draft' ? 'is-warning' : 'is-info' %> ml-2">
+          <%= album.status %>
+        </span>
+        <% if (album && album.isDeleted) { %>
+          <span class="tag is-danger ml-2">Deleted</span>
+        <% } %>
+      </p>
+      <% if (album && album.description) { %>
+        <p class="is-size-7 has-text-grey"><%= album.description.substring(0, 100) %><%= album.description.length > 100 ? '...' : '' %></p>
+      <% } %>
+      <div class="buttons is-right mt-4">
+        <a href="/albums/<%= album.id %>" class="button is-small is-primary">View</a>
+        <% if (album && !album.isDeleted) { %>
+          <a href="/albums/<%= album.id %>/edit" class="button is-small is-light">Edit</a>
+        <% } %>
+      </div>
+    </div>
+  </div>

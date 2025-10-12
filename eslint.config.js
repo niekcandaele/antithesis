@@ -26,8 +26,8 @@ export default tseslint.config(
     ignores: [
       'dist/',
       'node_modules/',
+      'public/',
       'eslint.config.js',
-      'tailwind.config.js',
       'postcss.config.js',
       'scripts/**/*',
       'tests/**/*',

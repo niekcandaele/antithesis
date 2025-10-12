@@ -1,21 +1,25 @@
-<footer class="footer bg-neutral text-neutral-content p-10 mt-auto">
-  <nav>
-    <h6 class="footer-title">Company</h6>
-    <a class="link link-hover" href="/about">About</a>
-    <a class="link link-hover" href="/contact">Contact</a>
-    <a class="link link-hover" href="/privacy">Privacy Policy</a>
-  </nav>
-  <nav>
-    <h6 class="footer-title">Resources</h6>
-    <a class="link link-hover" href="/docs">Documentation</a>
-    <a class="link link-hover" href="/api">API</a>
-    <a class="link link-hover" href="/support">Support</a>
-  </nav>
-  <aside>
-    <p>
-      © <%= new Date().getFullYear() %> 
-      <%= typeof config !== 'undefined' && config.APP_NAME ? config.APP_NAME : 'Antithesis' %>
-      <br/>All rights reserved.
-    </p>
-  </aside>
+<footer class="footer">
+  <div class="content has-text-centered">
+    <div class="columns">
+      <div class="column">
+        <p class="heading">Company</p>
+        <p><a href="/about">About</a></p>
+        <p><a href="/contact">Contact</a></p>
+        <p><a href="/privacy">Privacy Policy</a></p>
+      </div>
+      <div class="column">
+        <p class="heading">Resources</p>
+        <p><a href="/docs">Documentation</a></p>
+        <p><a href="/api">API</a></p>
+        <p><a href="/support">Support</a></p>
+      </div>
+      <div class="column">
+        <p>
+          © <%= new Date().getFullYear() %>
+          <%= typeof config !== 'undefined' && config.APP_NAME ? config.APP_NAME : 'Antithesis' %>
+          <br/>All rights reserved.
+        </p>
+      </div>
+    </div>
+  </div>
 </footer>

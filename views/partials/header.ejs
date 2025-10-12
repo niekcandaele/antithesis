@@ -1,33 +1,65 @@
-<header>
-  <div class="navbar bg-base-100 shadow-lg">
+<nav class="navbar" role="navigation" aria-label="main navigation">
+  <div class="navbar-brand">
+    <a class="navbar-item" href="/">
+      <strong><%= typeof config !== 'undefined' && config.APP_NAME ? config.APP_NAME : 'Antithesis' %></strong>
+    </a>
+  </div>
+
+  <div class="navbar-menu">
     <div class="navbar-start">
-      <a href="/" class="btn btn-ghost text-xl">
-        <%= typeof config !== 'undefined' && config.APP_NAME ? config.APP_NAME : 'Antithesis' %>
-      </a>
-    </div>
-    
-    <div class="navbar-center">
       <%- include('nav') %>
     </div>
-    
+
     <div class="navbar-end">
-      <% if (typeof user !== 'undefined' && user) { %>
-        <%- include('tenant-selector') %>
-        <div class="dropdown dropdown-end">
-          <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar">
-            <div class="w-10 rounded-full bg-neutral text-neutral-content flex items-center justify-center">
-              <span><%= user.email ? user.email.charAt(0).toUpperCase() : 'U' %></span>
+      <div class="navbar-item">
+        <% if (typeof user !== 'undefined' && user) { %>
+          <%- include('tenant-selector') %>
+          <div class="dropdown is-right">
+            <div class="dropdown-trigger">
+              <button class="button is-ghost" aria-haspopup="true" aria-controls="user-menu">
+                <span class="icon">
+                  <span class="is-flex is-align-items-center is-justify-content-center" style="width: 2.5rem; height: 2.5rem; border-radius: 50%; background-color: #363636; color: #fff;">
+                    <%= user.email ? user.email.charAt(0).toUpperCase() : 'U' %>
+                  </span>
+                </span>
+              </button>
+            </div>
+            <div class="dropdown-menu" id="user-menu" role="menu">
+              <div class="dropdown-content">
+                <a href="#" class="dropdown-item">Profile</a>
+                <a href="#" class="dropdown-item">Settings</a>
+                <hr class="dropdown-divider">
+                <a href="/auth/logout" class="dropdown-item">Logout</a>
+              </div>
             </div>
           </div>
-          <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
-            <li><a>Profile</a></li>
-            <li><a>Settings</a></li>
-            <li><a href="/auth/logout">Logout</a></li>
-          </ul>
-        </div>
-      <% } else { %>
-        <a href="/auth/login" class="btn btn-primary">Login</a>
-      <% } %>
+        <% } else { %>
+          <a href="/auth/login" class="button is-primary">Login</a>
+        <% } %>
+      </div>
     </div>
   </div>
-</header>
+</nav>
+
+<% if (typeof user !== 'undefined' && user) { %>
+<script>
+  // Simple dropdown toggle for user menu
+  document.addEventListener('DOMContentLoaded', function() {
+    const dropdown = document.querySelector('.dropdown');
+    const trigger = dropdown?.querySelector('.dropdown-trigger button');
+
+    if (trigger) {
+      trigger.addEventListener('click', function() {
+        dropdown.classList.toggle('is-active');
+      });
+
+      // Close dropdown when clicking outside
+      document.addEventListener('click', function(event) {
+        if (!dropdown.contains(event.target)) {
+          dropdown.classList.remove('is-active');
+        }
+      });
+    }
+  });
+</script>
+<% } %>

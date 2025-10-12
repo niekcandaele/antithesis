@@ -1,3 +1,24 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Import Bulma with default colors */
+@import 'bulma/css/bulma.css';
+
+/* Custom overrides go here if needed */
+
+/* Album card styles - Phase 7 */
+.album-cover-image {
+  object-fit: cover;
+}
+
+.album-placeholder {
+  background-color: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.album-placeholder-icon {
+  opacity: 0.2;
+}
+
+.album-deleted {
+  opacity: 0.5;
+}

@@ -87,8 +87,8 @@ test.describe('Albums & Photos CRUD', () => {
     await page.goto('/albums');
     await expect(page.locator('text=Album to Delete')).toBeVisible();
 
-    // Delete album (soft delete) - click View button to navigate to detail page
-    await page.locator('.card:has-text("Album to Delete")').locator('a:has-text("View")').click();
+    // Delete album (soft delete) - click View button to navigate to detail page (Bulma box)
+    await page.locator('.box:has-text("Album to Delete")').locator('a:has-text("View")').click();
     await page.waitForURL(/\/albums\/[a-f0-9-]+/);
 
     // Set up dialog handler BEFORE clicking Delete
@@ -148,8 +148,8 @@ test.describe('Albums & Photos CRUD', () => {
     await page.click('button[type="submit"]');
     await page.waitForURL(/\/albums\/[a-f0-9-]+/);
 
-    // Verify draft status - use specific selector for album badge
-    await expect(page.locator('h1 .badge').filter({ hasText: /draft/i })).toBeVisible();
+    // Verify draft status - use specific selector for album tag (Bulma)
+    await expect(page.locator('h1 .tag').filter({ hasText: /draft/i })).toBeVisible();
 
     // Edit and change to published
     await page.click('a[href*="/edit"]');
@@ -161,7 +161,7 @@ test.describe('Albums & Photos CRUD', () => {
     await page.waitForLoadState('networkidle');
 
     // Verify published status
-    await expect(page.locator('h1 .badge').filter({ hasText: /published/i })).toBeVisible();
+    await expect(page.locator('h1 .tag').filter({ hasText: /published/i })).toBeVisible();
 
     // Edit and change to archived
     await page.click('a[href*="/edit"]');
@@ -173,7 +173,7 @@ test.describe('Albums & Photos CRUD', () => {
     await page.waitForLoadState('networkidle');
 
     // Verify archived status
-    await expect(page.locator('h1 .badge').filter({ hasText: /archived/i })).toBeVisible();
+    await expect(page.locator('h1 .tag').filter({ hasText: /archived/i })).toBeVisible();
   });
 
   test('Photo status transitions: draft → published → archived', async ({ page, testUser }) => {
@@ -196,11 +196,15 @@ test.describe('Albums & Photos CRUD', () => {
     // Wait for redirect back to album detail page
     await page.waitForURL(/\/albums\/[a-f0-9-]+/);
 
-    // Verify draft status - scope to photo card to avoid matching album badge
-    await expect(page.locator('.card .badge').filter({ hasText: /draft/i }).first()).toBeVisible();
+    // Verify draft status - scope to photo box to avoid matching album tag (Bulma)
+    await expect(page.locator('.box .tag').filter({ hasText: /draft/i }).first()).toBeVisible();
 
-    // Edit and change to published
-    await page.click('a[href*="/edit"]');
+    // Edit and change to published - click photo edit link specifically
+    await page
+      .locator('#photos-grid')
+      .locator('a[href*="/photos/"][href*="/edit"]')
+      .first()
+      .click();
     await page.waitForLoadState('networkidle');
     await page.selectOption('select[name="status"]', 'published');
     await page.click('button[type="submit"]');
@@ -208,16 +212,20 @@ test.describe('Albums & Photos CRUD', () => {
     // Wait for redirect back to album detail page
     await page.waitForLoadState('networkidle');
 
-    // Verify published status - scope to photo card
+    // Verify published status - scope to photo box (Bulma)
     await expect(
       page
-        .locator('.card .badge')
+        .locator('.box .tag')
         .filter({ hasText: /published/i })
         .first(),
     ).toBeVisible();
 
-    // Edit and change to archived
-    await page.click('a[href*="/edit"]');
+    // Edit and change to archived - click photo edit link specifically
+    await page
+      .locator('#photos-grid')
+      .locator('a[href*="/photos/"][href*="/edit"]')
+      .first()
+      .click();
     await page.waitForLoadState('networkidle');
     await page.selectOption('select[name="status"]', 'archived');
     await page.click('button[type="submit"]');
@@ -225,10 +233,10 @@ test.describe('Albums & Photos CRUD', () => {
     // Wait for redirect back to album detail page
     await page.waitForLoadState('networkidle');
 
-    // Verify archived status - scope to photo card
+    // Verify archived status - scope to photo box (Bulma)
     await expect(
       page
-        .locator('.card .badge')
+        .locator('.box .tag')
         .filter({ hasText: /archived/i })
         .first(),
     ).toBeVisible();
@@ -244,9 +252,9 @@ test.describe('Albums & Photos CRUD', () => {
     await page.click('button[type="submit"]');
     await page.waitForURL(/\/albums\/[a-f0-9-]+/);
 
-    // Verify creator information is shown in the album detail card
+    // Verify creator information is shown in the album detail box (Bulma)
     await expect(
-      page.locator('.text-sm.opacity-50', {
+      page.locator('.is-size-7.has-text-grey-light', {
         hasText: new RegExp(`Created by.*${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i'),
       }),
     ).toBeVisible();
@@ -282,9 +290,9 @@ test.describe('Albums & Photos CRUD', () => {
     await page.goto(albumOneUrl);
     await expect(page.locator('text=Photo in Album Two')).not.toBeVisible();
 
-    // Go back to Album Two - should see the photo
+    // Go back to Album Two - should see the photo (Bulma box)
     await page.goto('/albums');
-    await page.locator('.card:has-text("Album Two")').locator('a:has-text("View")').click();
+    await page.locator('.box:has-text("Album Two")').locator('a:has-text("View")').click();
     await page.waitForURL(/\/albums\/[a-f0-9-]+/);
     await expect(page.locator('text=Photo in Album Two')).toBeVisible();
   });

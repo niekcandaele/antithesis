@@ -65,9 +65,6 @@ export const authController = controller('/auth')
 
         // Redirect to Keycloak
         res.redirect(authUrl);
-
-        // Return empty response (redirect already sent)
-        return apiResponse({});
       }),
 
     /**
@@ -165,9 +162,6 @@ export const authController = controller('/auth')
 
         // Redirect to return URL
         res.redirect(returnTo);
-
-        // Return empty response (redirect already sent)
-        return apiResponse({});
       }),
 
     /**
@@ -205,9 +199,6 @@ export const authController = controller('/auth')
 
         // Redirect to Keycloak logout
         res.redirect(logoutUrl);
-
-        // Return empty response (redirect already sent)
-        return apiResponse({});
       }),
 
     /**

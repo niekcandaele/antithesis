@@ -1,22 +1,12 @@
-<ul class="menu menu-horizontal px-1">
-  <li>
-    <a href="/" class="<%= typeof route !== 'undefined' && route === '/' ? 'active' : '' %>">
-      Home
-    </a>
-  </li>
-  <li>
-    <a href="/dashboard" class="<%= typeof route !== 'undefined' && route.startsWith('/dashboard') ? 'active' : '' %>">
-      Dashboard
-    </a>
-  </li>
-  <li>
-    <a href="/albums" class="<%= typeof route !== 'undefined' && route.startsWith('/albums') ? 'active' : '' %>">
-      Albums
-    </a>
-  </li>
-  <li>
-    <a href="/about" class="<%= typeof route !== 'undefined' && route === '/about' ? 'active' : '' %>">
-      About
-    </a>
-  </li>
-</ul>
+<a href="/" class="navbar-item <%= typeof route !== 'undefined' && route === '/' ? 'is-active' : '' %>">
+  Home
+</a>
+<a href="/dashboard" class="navbar-item <%= typeof route !== 'undefined' && route.startsWith('/dashboard') ? 'is-active' : '' %>">
+  Dashboard
+</a>
+<a href="/albums" class="navbar-item <%= typeof route !== 'undefined' && route.startsWith('/albums') ? 'is-active' : '' %>">
+  Albums
+</a>
+<a href="/about" class="navbar-item <%= typeof route !== 'undefined' && route === '/about' ? 'is-active' : '' %>">
+  About
+</a>

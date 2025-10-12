@@ -1,0 +1,12 @@
+<%#
+  Phase 7: htmx Template Fragment - Success Notification
+
+  This partial is created in Phase 7 for htmx success responses.
+  Integration with controllers happens in Phase 8.
+
+  Expected data: { message: string }
+%>
+<div class="notification is-success" role="status" aria-live="polite">
+  <button class="delete" aria-label="Close notification"></button>
+  <%= message %>
+</div>

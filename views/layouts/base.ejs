@@ -1,18 +1,48 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= typeof title !== 'undefined' ? title : 'Antithesis' %></title>
   <link rel="stylesheet" href="/css/main.css">
 </head>
-<body>
+<body hx-boost="true">
   <%- include('../partials/header') %>
-  
-  <main class="container mx-auto px-4 py-8">
-    <%- body %>
+
+  <main class="section">
+    <div class="container">
+      <%- body %>
+    </div>
   </main>
-  
+
   <%- include('../partials/footer') %>
+  <script src="/js/htmx.min.js"></script>
+  <script>
+    // Configure htmx to swap content on 422 validation error responses
+    document.body.addEventListener('htmx:beforeSwap', function(evt) {
+      if (evt.detail.xhr.status === 422) {
+        evt.detail.shouldSwap = true;
+        evt.detail.isError = false;
+      }
+    });
+
+    // Bulma notification dismiss functionality
+    document.addEventListener('DOMContentLoaded', function() {
+      function setupNotificationDismiss() {
+        (document.querySelectorAll('.notification .delete') || []).forEach(($delete) => {
+          const $notification = $delete.parentNode;
+          $delete.addEventListener('click', () => {
+            $notification.parentNode.removeChild($notification);
+          });
+        });
+      }
+
+      // Set up dismiss handlers on initial page load
+      setupNotificationDismiss();
+
+      // Re-attach handlers after htmx swaps in new content
+      document.body.addEventListener('htmx:afterSwap', setupNotificationDismiss);
+    });
+  </script>
 </body>
 </html>

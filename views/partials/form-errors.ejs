@@ -1,0 +1,17 @@
+<%#
+  Phase 7: htmx Template Fragment - Form Validation Errors
+
+  This partial is created in Phase 7 for htmx form validation responses.
+  Integration with controllers happens in Phase 8.
+
+  Expected data: { errors: string[] }
+%>
+<% if (errors && errors.length > 0) { %>
+<div class="notification is-danger">
+  <ul>
+    <% errors.forEach(error => { %>
+    <li><%= error %></li>
+    <% }) %>
+  </ul>
+</div>
+<% } %>

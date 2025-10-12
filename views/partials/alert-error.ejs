@@ -1,0 +1,12 @@
+<%#
+  Phase 7: htmx Template Fragment - Error Notification
+
+  This partial is created in Phase 7 for htmx error responses.
+  Integration with controllers happens in Phase 8.
+
+  Expected data: { message: string }
+%>
+<div class="notification is-danger" role="alert" aria-live="assertive">
+  <button class="delete" aria-label="Close notification"></button>
+  <%= message %>
+</div>

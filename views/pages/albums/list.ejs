@@ -1,108 +1,151 @@
-<!DOCTYPE html>
-<html lang="en" data-theme="dark">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title %> - Antithesis</title>
-  <link rel="stylesheet" href="/css/main.css">
-</head>
-<body>
-  <%- include('../../partials/header') %>
-
-  <main class="container mx-auto px-4 py-8">
-    <div class="space-y-6">
-      <!-- Page Header -->
-      <div class="flex justify-between items-center">
-        <h1 class="text-3xl font-bold"><%= title %></h1>
-        <div class="flex gap-2">
-          <a href="/albums/new" class="btn btn-primary">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+<%- include('../../layouts/base', {
+  title: title + ' - Antithesis',
+  body: `
+    <!-- Page Header -->
+    <div class="level mb-5">
+      <div class="level-left">
+        <h1 class="title is-3">${title}</h1>
+      </div>
+      <div class="level-right">
+        <a href="/albums/new" class="button is-primary">
+          <span class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
-            Create Album
-          </a>
-        </div>
+          </span>
+          <span>Create Album</span>
+        </a>
       </div>
+    </div>
 
-      <!-- Filters -->
-      <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-          <form method="GET" action="/albums" class="flex gap-4 items-end">
-            <div class="form-control">
-              <label class="label">
-                <span class="label-text">Status</span>
-              </label>
-              <select name="status" class="select select-bordered w-full max-w-xs">
-                <option value="">All</option>
-                <option value="draft" <%= filters.status === 'draft' ? 'selected' : '' %>>Draft</option>
-                <option value="published" <%= filters.status === 'published' ? 'selected' : '' %>>Published</option>
-                <option value="archived" <%= filters.status === 'archived' ? 'selected' : '' %>>Archived</option>
-              </select>
-            </div>
-
-            <div class="form-control">
-              <label class="label cursor-pointer gap-2">
-                <span class="label-text">Include Deleted</span>
-                <input type="checkbox" name="includeDeleted" value="true" class="checkbox" <%= filters.includeDeleted ? 'checked' : '' %> />
-              </label>
-            </div>
-
-            <button type="submit" class="btn btn-secondary">Filter</button>
-            <a href="/albums" class="btn btn-ghost">Reset</a>
-          </form>
-        </div>
-      </div>
-
-      <!-- Albums Grid -->
-      <% if (albums.length === 0) { %>
-        <div class="card bg-base-100 shadow-xl">
-          <div class="card-body text-center">
-            <p class="text-lg">No albums found. Create your first album to get started!</p>
-            <div class="card-actions justify-center">
-              <a href="/albums/new" class="btn btn-primary">Create Album</a>
+    <!-- Search & Filters -->
+    <div class="box mb-5">
+      <form method="GET" action="/albums">
+        <div class="columns">
+          <!-- Live Search -->
+          <div class="column is-one-third">
+            <div class="field">
+              <label class="label">Search Albums</label>
+              <div class="control">
+                <input
+                  type="search"
+                  name="q"
+                  class="input"
+                  placeholder="Search by name or description..."
+                  hx-get="/albums/fragments"
+                  hx-trigger="keyup changed delay:500ms, search"
+                  hx-target="#album-list"
+                  hx-swap="innerHTML"
+                  hx-include="[name='status'], [name='includeDeleted']"
+                  aria-label="Search albums"
+                />
+              </div>
             </div>
           </div>
-        </div>
-      <% } else { %>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <% albums.forEach(function(album) { %>
-            <div class="card bg-base-100 shadow-xl <%= album.isDeleted ? 'opacity-50' : '' %>">
-              <% if (album.coverPhotoUrl) { %>
-                <figure><img src="<%= album.coverPhotoUrl %>" alt="<%= album.name %>" class="h-48 w-full object-cover" /></figure>
-              <% } else { %>
-                <figure class="bg-base-300 h-48 flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-base-content opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </figure>
-              <% } %>
-              <div class="card-body">
-                <h2 class="card-title">
-                  <%= album.name %>
-                  <div class="badge badge-<%= album.status === 'published' ? 'success' : album.status === 'draft' ? 'warning' : 'info' %>">
-                    <%= album.status %>
-                  </div>
-                  <% if (album.isDeleted) { %>
-                    <div class="badge badge-error">Deleted</div>
-                  <% } %>
-                </h2>
-                <% if (album.description) { %>
-                  <p class="text-sm opacity-70"><%= album.description.substring(0, 100) %><%= album.description.length > 100 ? '...' : '' %></p>
-                <% } %>
-                <div class="card-actions justify-end mt-4">
-                  <a href="/albums/<%= album.id %>" class="btn btn-sm btn-primary">View</a>
-                  <% if (!album.isDeleted) { %>
-                    <a href="/albums/<%= album.id %>/edit" class="btn btn-sm btn-ghost">Edit</a>
-                  <% } %>
+
+          <div class="column is-one-third">
+            <div class="field">
+              <label class="label">Status</label>
+              <div class="control">
+                <div class="select is-fullwidth">
+                  <select name="status">
+                    <option value="">All</option>
+                    <option value="draft" ${filters.status === 'draft' ? 'selected' : ''}>Draft</option>
+                    <option value="published" ${filters.status === 'published' ? 'selected' : ''}>Published</option>
+                    <option value="archived" ${filters.status === 'archived' ? 'selected' : ''}>Archived</option>
+                  </select>
                 </div>
               </div>
             </div>
-          <% }); %>
-        </div>
-      <% } %>
-    </div>
-  </main>
+          </div>
 
-  <%- include('../../partials/footer') %>
-</body>
-</html>
+          <div class="column">
+            <div class="field">
+              <label class="label">&nbsp;</label>
+              <div class="control">
+                <label class="checkbox">
+                  <input type="checkbox" name="includeDeleted" value="true" ${filters.includeDeleted ? 'checked' : ''} />
+                  Include Deleted
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="column is-narrow">
+            <div class="field">
+              <label class="label">&nbsp;</label>
+              <div class="control">
+                <div class="buttons">
+                  <button type="submit" class="button is-link">Filter</button>
+                  <a href="/albums" class="button is-light">Reset</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Albums Grid -->
+    ${albums.length === 0 ? `
+      <div class="box has-text-centered">
+        <p class="subtitle is-5">No albums found. Create your first album to get started!</p>
+        <div class="buttons is-centered mt-4">
+          <a href="/albums/new" class="button is-primary">Create Album</a>
+        </div>
+      </div>
+    ` : `
+      <div id="album-list" class="columns is-multiline">
+        ${albums.map(album => `
+          <div class="column is-one-third">
+            <div class="box ${album.isDeleted ? 'album-deleted' : ''}">
+              ${album.coverPhotoUrl ? `
+                <figure class="image is-16by9">
+                  <img src="${album.coverPhotoUrl}" alt="${album.name}" class="album-cover-image" />
+                </figure>
+              ` : `
+                <figure class="image is-16by9 album-placeholder">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="album-placeholder-icon">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </figure>
+              `}
+              <div class="content mt-4">
+                <p class="title is-5">
+                  ${album.name}
+                  <span class="tag ${album.status === 'published' ? 'is-success' : album.status === 'draft' ? 'is-warning' : 'is-info'} ml-2">
+                    ${album.status}
+                  </span>
+                  ${album.isDeleted ? '<span class="tag is-danger ml-2">Deleted</span>' : ''}
+                </p>
+                ${album.description ? `
+                  <p class="is-size-7 has-text-grey">${album.description.substring(0, 100)}${album.description.length > 100 ? '...' : ''}</p>
+                ` : ''}
+                <div class="buttons is-right mt-4">
+                  <a href="/albums/${album.id}" class="button is-small is-primary">View</a>
+                  ${!album.isDeleted ? `
+                    <a href="/albums/${album.id}/edit" class="button is-small is-light">Edit</a>
+                  ` : ''}
+                </div>
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- Load More Button (htmx pagination) -->
+      ${albums.length >= 20 ? `
+        <div class="has-text-centered mt-5">
+          <button
+            class="button is-primary"
+            hx-get="/albums/fragments?page=2&status=${filters.status || ''}&includeDeleted=${filters.includeDeleted}"
+            hx-target="#album-list"
+            hx-swap="beforeend"
+          >
+            Load More
+          </button>
+        </div>
+      ` : ''}
+    `}
+  `
+}) %>

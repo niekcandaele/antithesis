@@ -60,24 +60,24 @@ void describe('Dashboard Controller', () => {
     );
   });
 
-  void it('should contain DaisyUI component classes', async () => {
+  void it('should contain Bulma component classes', async () => {
     const response = await fetch(`http://localhost:${String(port)}/dashboard`);
     const html = await response.text();
 
-    // Check for DaisyUI components
+    // Check for Bulma components
     assert.ok(html.includes('navbar'), 'HTML should contain navbar class');
-    assert.ok(html.includes('stats'), 'HTML should contain stats class');
-    assert.ok(html.includes('card'), 'HTML should contain card class');
+    assert.ok(html.includes('box'), 'HTML should contain box class');
+    assert.ok(html.includes('columns'), 'HTML should contain columns class');
     assert.ok(html.includes('footer'), 'HTML should contain footer class');
   });
 
-  void it('should contain Tailwind utility classes', async () => {
+  void it('should contain Bulma utility classes', async () => {
     const response = await fetch(`http://localhost:${String(port)}/dashboard`);
     const html = await response.text();
 
-    // Check for common Tailwind classes used in dashboard
-    assert.ok(html.includes('container'), 'HTML should contain Tailwind container class');
-    assert.ok(html.includes('mx-auto'), 'HTML should contain Tailwind mx-auto class');
+    // Check for common Bulma classes used in dashboard
+    assert.ok(html.includes('container'), 'HTML should contain Bulma container class');
+    assert.ok(html.includes('section'), 'HTML should contain Bulma section class');
   });
 
   void it('should include global context values', async () => {
@@ -87,8 +87,8 @@ void describe('Dashboard Controller', () => {
     // Check for config.APP_NAME (should be 'antithesis' from config)
     assert.ok(html.includes('antithesis'), 'HTML should contain app name from config');
 
-    // Check for dark theme attribute
-    assert.ok(html.includes('data-theme="dark"'), 'HTML should have dark theme data attribute');
+    // Check for htmx boost attribute
+    assert.ok(html.includes('hx-boost="true"'), 'HTML should have htmx boost attribute');
   });
 
   void it('should render passed data correctly', async () => {
