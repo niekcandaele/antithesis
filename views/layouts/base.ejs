@@ -11,7 +11,18 @@
 
   <main class="section">
     <div class="container">
-      <%- body %>
+      <%- include('../partials/' + bodyPartial, {
+        album: typeof album !== 'undefined' ? album : null,
+        albums: typeof albums !== 'undefined' ? albums : null,
+        photo: typeof photo !== 'undefined' ? photo : null,
+        photos: typeof photos !== 'undefined' ? photos : null,
+        title: typeof title !== 'undefined' ? title : null,
+        currentTenantId: typeof currentTenantId !== 'undefined' ? currentTenantId : null,
+        filters: typeof filters !== 'undefined' ? filters : null,
+        statusCode: typeof statusCode !== 'undefined' ? statusCode : null,
+        message: typeof message !== 'undefined' ? message : null,
+        details: typeof details !== 'undefined' ? details : null
+      }) %>
     </div>
   </main>
 

@@ -1,0 +1,103 @@
+<!-- Breadcrumbs -->
+<nav class="breadcrumb mb-5" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="/">Home</a></li>
+    <li><a href="/albums">Albums</a></li>
+    <% if (album) { %>
+      <li><a href="/albums/<%= album.id %>"><%= album.name %></a></li>
+      <li class="is-active"><a href="#" aria-current="page">Edit</a></li>
+    <% } else { %>
+      <li class="is-active"><a href="#" aria-current="page">New</a></li>
+    <% } %>
+  </ul>
+</nav>
+
+<!-- Form Box -->
+<div id="form-container">
+  <div class="box" style="max-width: 48rem; margin: 0 auto;">
+    <h1 class="title is-3 mb-5"><%= title %></h1>
+
+    <!-- Error/Success Notification Area -->
+    <div id="error-notification" role="alert" aria-live="assertive" aria-atomic="true"></div>
+
+    <form
+      method="POST"
+      action="<%= album ? '/albums/' + album.id : '/albums' %>"
+      hx-post="<%= album ? '/albums/' + album.id : '/albums' %>"
+      hx-target="#error-notification"
+      hx-swap="innerHTML"
+      novalidate
+    >
+    <!-- Name Field -->
+    <div class="field">
+      <label class="label">
+        Album Name <span class="has-text-danger">*</span>
+      </label>
+      <div class="control">
+        <input
+          type="text"
+          name="name"
+          class="input"
+          placeholder="Enter album name"
+          value="<%= album ? album.name : '' %>"
+          required
+        />
+      </div>
+    </div>
+
+    <!-- Description Field -->
+    <div class="field">
+      <label class="label">Description</label>
+      <div class="control">
+        <textarea
+          name="description"
+          class="textarea"
+          placeholder="Enter album description"
+          rows="4"
+        ><%= album && album.description ? album.description : '' %></textarea>
+      </div>
+    </div>
+
+    <!-- Cover Photo URL Field -->
+    <div class="field">
+      <label class="label">Cover Photo URL</label>
+      <div class="control">
+        <input
+          type="url"
+          name="coverPhotoUrl"
+          class="input"
+          placeholder="https://example.com/image.jpg"
+          value="<%= album && album.coverPhotoUrl ? album.coverPhotoUrl : '' %>"
+        />
+      </div>
+      <p class="help">Optional: Provide a URL for the cover photo</p>
+    </div>
+
+    <!-- Status Field -->
+    <div class="field">
+      <label class="label">Status</label>
+      <div class="control">
+        <div class="select is-fullwidth">
+          <select name="status">
+            <option value="draft" <%= album && album.status === 'draft' ? 'selected' : !album ? 'selected' : '' %>>Draft</option>
+            <option value="published" <%= album && album.status === 'published' ? 'selected' : '' %>>Published</option>
+            <option value="archived" <%= album && album.status === 'archived' ? 'selected' : '' %>>Archived</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Form Actions -->
+    <div class="field is-grouped is-grouped-right mt-5">
+      <div class="control">
+        <a href="<%= album ? '/albums/' + album.id : '/albums' %>" class="button is-light">Cancel</a>
+      </div>
+      <div class="control">
+        <button type="submit" class="button is-primary">
+          <%= album ? 'Update Album' : 'Create Album' %>
+        </button>
+      </div>
+    </div>
+  </form>
+  </div>
+</div>

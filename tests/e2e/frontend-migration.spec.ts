@@ -269,4 +269,69 @@ test.describe('Frontend Migration - htmx Integration', () => {
     const finalCount = await page.locator('#album-list .column').count();
     expect(finalCount).toBeGreaterThanOrEqual(initialCount);
   });
+
+  test('XSS protection in album fields', async ({ page, testUser }) => {
+    await loginViaUI(page, testUser);
+
+    // XSS payloads to test
+    const xssPayloads = [
+      '<script>alert("XSS")</script>',
+      '<img src=x onerror=alert("XSS")>',
+      '"><script>alert("XSS")</script>',
+      "'; alert('XSS'); //",
+    ];
+
+    for (const payload of xssPayloads) {
+      // Navigate to album creation form
+      await page.goto('/albums/new');
+
+      // Fill in form with XSS payload
+      await page.fill('input[name="name"]', payload);
+      await page.fill('textarea[name="description"]', `Description: ${payload}`);
+      await page.click('button[type="submit"]');
+
+      // Wait for success notification
+      await expect(page.locator('.notification.is-success')).toBeVisible({ timeout: 5000 });
+
+      // Navigate to albums list
+      await page.goto('/albums');
+
+      // Verify payload is rendered as text (escaped), not executed
+      const albumCards = page.locator('.box .title.is-5');
+      const cardWithPayload = albumCards.filter({ hasText: payload });
+      await expect(cardWithPayload).toBeVisible();
+
+      // Verify the literal text '<script>' is visible (meaning it's escaped)
+      if (payload.includes('<script>')) {
+        const htmlContent = await cardWithPayload.innerHTML();
+        expect(htmlContent).toContain('&lt;script&gt;');
+      }
+
+      // Find the containing box and click its View button
+      const boxWithPayload = cardWithPayload.locator('..').locator('..');
+      const viewButton = boxWithPayload.locator('a.button:has-text("View")');
+      await viewButton.click();
+
+      // Wait for navigation to detail page
+      await page.waitForURL(/\/albums\/.+/, { timeout: 5000 });
+
+      // Verify payload is escaped on detail page too
+      const detailTitle = page.locator('h1.title.is-3');
+      await expect(detailTitle).toContainText(payload);
+
+      // Verify the literal text '<script>' is visible on detail page (meaning it's escaped)
+      if (payload.includes('<script>')) {
+        const detailHtml = await detailTitle.innerHTML();
+        expect(detailHtml).toContain('&lt;script&gt;');
+      }
+
+      // Verify no script tags were injected into the DOM
+      const scriptTags = await page.locator('script:has-text("alert")').count();
+      expect(scriptTags).toBe(0);
+
+      // Verify no inline event handlers were created
+      const elementsWithOnclick = await page.locator('[onclick*="alert"]').count();
+      expect(elementsWithOnclick).toBe(0);
+    }
+  });
 });
