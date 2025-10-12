@@ -1,0 +1,100 @@
+<!-- Page Header -->
+<div class="level mb-5">
+  <div class="level-left">
+    <h1 class="title is-3"><%= typeof title !== 'undefined' ? title : 'Dashboard' %></h1>
+  </div>
+  <div class="level-right">
+    <nav class="breadcrumb" aria-label="breadcrumbs">
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li class="is-active"><a href="#" aria-current="page">Dashboard</a></li>
+      </ul>
+    </nav>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="columns mb-5">
+  <div class="column">
+    <div class="box has-text-centered">
+      <p class="heading">Total Users</p>
+      <p class="title"><%= typeof stats !== 'undefined' && stats.users ? stats.users : '0' %></p>
+      <p class="subtitle is-6 has-text-success">↗︎ 400 (22%)</p>
+    </div>
+  </div>
+
+  <div class="column">
+    <div class="box has-text-centered">
+      <p class="heading">Total Requests</p>
+      <p class="title"><%= typeof stats !== 'undefined' && stats.requests ? stats.requests : '0' %></p>
+      <p class="subtitle is-6 has-text-success">↗︎ 90 (14%)</p>
+    </div>
+  </div>
+
+  <div class="column">
+    <div class="box has-text-centered">
+      <p class="heading">Active Sessions</p>
+      <p class="title"><%= typeof stats !== 'undefined' && stats.sessions ? stats.sessions : '0' %></p>
+      <p class="subtitle is-6 has-text-danger">↘︎ 12 (3%)</p>
+    </div>
+  </div>
+</div>
+
+<!-- Cards -->
+<div class="columns mb-5">
+  <div class="column is-half">
+    <div class="box">
+      <h2 class="title is-5">Recent Activity</h2>
+      <p>Monitor your application's recent events and activities.</p>
+      <div class="buttons is-right mt-4">
+        <button class="button is-primary">View All</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="column is-half">
+    <div class="box">
+      <h2 class="title is-5">System Status</h2>
+      <p>Current route: <span class="tag is-primary"><%= typeof route !== 'undefined' ? route : 'unknown' %></span></p>
+      <p>App: <span class="tag is-link"><%= typeof config !== 'undefined' && config.APP_NAME ? config.APP_NAME : 'Antithesis' %></span></p>
+      <% if (typeof user !== 'undefined' && user) { %>
+        <p>User: <span class="tag is-info"><%= user.email %></span></p>
+        <% if (typeof currentTenantId !== 'undefined' && currentTenantId) { %>
+          <p>Current Tenant: <span class="tag is-info"><%= currentTenantId %></span></p>
+        <% } else { %>
+          <p>Current Tenant: <span class="tag is-warning">No tenant assigned</span></p>
+        <% } %>
+      <% } %>
+      <div class="buttons is-right mt-4">
+        <button class="button is-light">Details</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Data Table (if data passed) -->
+<% if (typeof data !== 'undefined' && data && data.length > 0) { %>
+  <div class="box">
+    <h2 class="title is-5">Data Overview</h2>
+    <div class="table-container">
+      <table class="table is-fullwidth is-striped">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% data.forEach(item => { %>
+            <tr>
+              <td><%= item.id %></td>
+              <td><%= item.name %></td>
+              <td><span class="tag is-success"><%= item.status %></span></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% } %>
