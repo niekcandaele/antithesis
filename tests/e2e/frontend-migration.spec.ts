@@ -71,11 +71,25 @@ test.describe('Frontend Migration - htmx Integration', () => {
     return user.email;
   }
 
+  /**
+   * Wait for htmx to be fully loaded and initialized
+   * Prevents race conditions where tests interact with htmx-enabled elements before htmx is ready
+   */
+  async function waitForHtmx(page: Page): Promise<void> {
+    await page.waitForFunction(
+      () => typeof (window as typeof window & { htmx?: unknown }).htmx !== 'undefined',
+      {
+        timeout: 5000,
+      },
+    );
+  }
+
   test('htmx form submission without page reload', async ({ page, testUser }) => {
     await loginViaUI(page, testUser);
 
     // Navigate to album creation form
     await page.goto('/albums/new');
+    await waitForHtmx(page);
     const initialUrl = page.url();
 
     // Fill in form fields
@@ -123,6 +137,7 @@ test.describe('Frontend Migration - htmx Integration', () => {
 
     // Navigate to albums list
     await page.goto('/albums');
+    await waitForHtmx(page);
 
     // Count initial albums displayed (should be 20 on first page)
     const initialAlbums = await page.locator('#album-list .column').count();
@@ -166,6 +181,7 @@ test.describe('Frontend Migration - htmx Integration', () => {
 
     // Navigate to album creation form
     await page.goto('/albums/new');
+    await waitForHtmx(page);
     const initialUrl = page.url();
 
     // Submit form with empty/invalid data (name is required)
@@ -205,6 +221,7 @@ test.describe('Frontend Migration - htmx Integration', () => {
 
     // Navigate to albums list
     await page.goto('/albums');
+    await waitForHtmx(page);
 
     // Wait for page to load
     await page.waitForLoadState('networkidle');
@@ -284,6 +301,7 @@ test.describe('Frontend Migration - htmx Integration', () => {
     for (const payload of xssPayloads) {
       // Navigate to album creation form
       await page.goto('/albums/new');
+      await waitForHtmx(page);
 
       // Fill in form with XSS payload
       await page.fill('input[name="name"]', payload);
