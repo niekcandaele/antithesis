@@ -45,13 +45,13 @@ export class DatabaseTestHelper {
     const client = await this.pool.connect();
     try {
       const result = await client.query(
-        `SELECT u.id as user_id, u.primary_tenant_id as tenant_id
+        `SELECT u.id as user_id, u."lastTenantId" as tenant_id
          FROM users u
          WHERE u.email = $1`,
         [email],
       );
 
-      if (result.rows.length === 0) {
+      if (result.rows.length === 0 || !result.rows[0].tenant_id) {
         return null;
       }
 
@@ -86,7 +86,7 @@ export class DatabaseTestHelper {
 
       for (let i = 0; i < count; i++) {
         const result = await client.query(
-          `INSERT INTO albums (tenant_id, name, description, status, created_by_user_id, created_at, updated_at, is_deleted)
+          `INSERT INTO albums ("tenantId", name, description, status, "createdByUserId", "createdAt", "updatedAt", "isDeleted")
            VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), false)
            RETURNING id`,
           [tenantId, `${namePrefix} ${i + 1}`, `Test album ${i + 1}`, 'published', userId],
@@ -120,7 +120,7 @@ export class DatabaseTestHelper {
 
       for (const albumName of albumNames) {
         const result = await client.query(
-          `INSERT INTO albums (tenant_id, name, description, status, created_by_user_id, created_at, updated_at, is_deleted)
+          `INSERT INTO albums ("tenantId", name, description, status, "createdByUserId", "createdAt", "updatedAt", "isDeleted")
            VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), false)
            RETURNING id`,
           [tenantId, albumName, `Test album: ${albumName}`, 'published', userId],

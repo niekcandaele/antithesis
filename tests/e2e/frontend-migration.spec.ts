@@ -32,7 +32,7 @@ let database: DatabaseTestHelper;
 
 // Extend Playwright test with testUser fixture
 const test = base.extend<{ testUser: TestUser }>({
-  testUser: async (_, use) => {
+  testUser: async ({}, use) => {
     const user = createTestUser();
     await keycloak.createUser(user.email, user.password);
     await use(user);
