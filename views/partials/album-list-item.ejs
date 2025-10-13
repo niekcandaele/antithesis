@@ -7,7 +7,7 @@
 <div class="box <%= album && album.isDeleted ? 'album-deleted' : '' %>">
     <% if (album && album.coverPhotoUrl) { %>
       <figure class="image is-16by9">
-        <img src="<%= album.coverPhotoUrl %>" alt="<%= album.name %>" class="album-cover-image" />
+        <img src="<%= album.coverPhotoUrl %>" alt="<%= album.name || 'Untitled Album' %>" class="album-cover-image" />
       </figure>
     <% } else { %>
       <figure class="image is-16by9 album-placeholder">
